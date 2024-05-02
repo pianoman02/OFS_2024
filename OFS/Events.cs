@@ -37,10 +37,8 @@ namespace OFS
         {
             // We make a new CarArrives event for the next arriving car
             int hour = ((int)Math.Floor(EventTime)) % 24;
-            double deltaTime = Exponential.Sample(Data.ArrivalDistribution[hour] * 750);
-            // This is not entirely correct, will need change later on. It might take a long time during the nights for example.
-            // ! CHANGE THIS !
-            State.EventQueue.Enqueue(new CarArrives(EventTime + deltaTime), EventTime + deltaTime);
+            double nextTime = Random.PoissonSample(Data.ArrivalDistribution,EventTime);
+            State.EventQueue.Enqueue(new CarArrives(nextTime), nextTime);
             Console.WriteLine(EventTime);
 
             // Now, we try to park the car at most three times
@@ -139,9 +137,12 @@ namespace OFS
         public override void CallEvent()
         {
             // take a random new output of the solar panels
-            // TODO
-            Cables.ChangeParkingDemand(parking, 0, EventTime);
+            double averageoutput = Data.SolarPanelAverages[((int)EventTime)%24];
+            double output = Normal.Sample(averageoutput, 0.15 * averageoutput);
+            Cables.ChangeParkingDemand(parking, output - State.SolarPanelOutput[parking], EventTime);
+            State.SolarPanelOutput[parking] = output;
 
+            // Enqueue next solar panel change
             State.EventQueue.Enqueue(new SolarPanelsChange(EventTime + 1, parking), EventTime + 1);
         }
     }
