@@ -66,16 +66,17 @@ namespace OFS
                 {
                     emptyparkingfound = true;
                     State.CarsOnParking[nextparking]++;
+                    // We generate a random amount of charge, and schedule the moment it is detached
+                    double chargevolume = Random.SampleContCDF(Data.ChargingVolumeCumulativeProbabilty);
+                    double chargetime = chargevolume / 6; /// Assuming greedy charging
+                    State.EventQueue.Enqueue(new StopsCharging(EventTime + chargetime, nextparking), EventTime + chargetime);
                     // Schedule departure moment
                     double parkingtime = Random.SampleContCDF(Data.ConnectionTimeCumulativeProbabilty);
+                    parkingtime = Math.Min(parkingtime, 1.4 * chargetime); // to make sure it is lengthend if the parking time is too small.
                     State.EventQueue.Enqueue(new CarLeaves(EventTime + parkingtime, nextparking), EventTime + parkingtime);
                     // We change the charge
                     Cables.ChangeParkingDemand(nextparking, 6, EventTime);
-                    // We generate a random amount of charge, and schedule the moment it is detached
-                    /// TODO: CHANGE PARK TIME ACCORDING TO 40% rule.
-                    double chargevolume = Random.SampleContCDF(Data.ChargingVolumeCumulativeProbabilty);
-                    double chargetime = chargevolume / 6; /// Assuming greedy charging
-                    State.EventQueue.Enqueue(new StopsCharging(EventTime + chargetime, nextparking), EventTime + parkingtime);
+                    
                 }
                 // Add to tried parkings if no capacity
                 else
