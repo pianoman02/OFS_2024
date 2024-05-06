@@ -7,17 +7,14 @@ using System.Threading.Tasks;
 
 namespace OFS
 {
-    public abstract class Event
+    public abstract class Event(double time)
     {
-        public double EventTime;
+        public double EventTime = time;
+
         public abstract void CallEvent();
     }
-    public class EndSimulation : Event
+    public class EndSimulation(double time) : Event(time)
     {
-        public EndSimulation(double time)
-        {
-            EventTime = time;
-        }
         override public void CallEvent()
         {
             Console.WriteLine(History.CarsRejected);
@@ -27,12 +24,8 @@ namespace OFS
             // Of misschien laten we het langszaam doodgaan (geen nieuwe autos bijvoorbeeld?)
         }
     }
-    public class CarArrives : Event
+    public class CarArrives(double time) : Event(time)
     {
-        public CarArrives(double time)
-        {
-            EventTime = time;
-        }
         override public void CallEvent()
         {
             // We make a new CarArrives event for the next arriving car
@@ -91,51 +84,32 @@ namespace OFS
             }
         }
     }
-    public class StartsCharging : Event
+    public class StartsCharging(double time) : Event(time)
     {
-        public StartsCharging(double time)
-        {
-            EventTime = time;
-        }
         public override void CallEvent()
         {
             // todo
         }
     }
-    public class StopsCharging: Event
+    public class StopsCharging(double time, int parking) : Event(time)
     {
-        int parking;
-        public StopsCharging(double time, int parking)
-        {
-            EventTime = time;
-            this.parking = parking;
-        }
+        int parking = parking;
         public override void CallEvent()
         {
             // todo
         }
     }
-    public class CarLeaves: Event
+    public class CarLeaves(double time, int parking) : Event(time)
     {
-        int parking;
-        public CarLeaves(double time, int parking)
-        {
-            EventTime = time;
-            this.parking = parking;
-        }
+        int parking = parking;
         public override void CallEvent()
         {
             State.CarsOnParking[parking]--;
         }
     }
-    public class SolarPanelsChange: Event
+    public class SolarPanelsChange(double time, int parking) : Event(time)
     {
-        int parking;
-        public SolarPanelsChange(double time, int parking)
-        {
-            EventTime = time;
-            this.parking = parking;
-        }
+        int parking = parking;
         public override void CallEvent()
         {
             // take a random new output of the solar panels
