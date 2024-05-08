@@ -39,7 +39,7 @@ namespace OFS
             ReadCumProb("charging_volume.csv", Data.ChargingVolumeCumulativeProbabilty);
             ReadCumProb("connection_time.csv", Data.ConnectionTimeCumulativeProbabilty);
             // TODO: Read solar panel data, dependent on summer or winter.
-            for (int i = 0; i < 24; i++)
+            for (int i = 0; i < 23; i++)
                 Data.SolarPanelAverages.Add(0.1);
 
          
@@ -114,31 +114,6 @@ namespace OFS
         {
             int val = SampleCDF(cdf);
             return ContinuousUniform.Sample(val, val + 1);
-        }
-        /// <summary>
-        /// Takes an exponential amount of time, but corrects for the fact that that might cross the hour tickmark.
-        /// </summary>
-        /// <param name="pdf"></param>
-        /// <param name="currenttime"></param>
-        /// <returns></returns>
-        static public double PoissonSample(IList<double> pdf, double currenttime)
-        {
-            // TODO: This method should be checked statistically.
-            int hour = ((int)Math.Floor(currenttime));
-            bool higher = true;
-            double deltaTime =0;
-            while (higher)
-            {
-                deltaTime = Exponential.Sample(Data.ArrivalDistribution[hour%24] * 750);
-                if (currenttime + deltaTime < hour + 1)
-                    higher = false;
-                else
-                {
-                    hour++;
-                    currenttime = hour;
-                }
-            }
-            return currenttime + deltaTime;
         }
     }
 }
