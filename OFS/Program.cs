@@ -1,8 +1,5 @@
-﻿using System;
-using System.Globalization;
-using System.IO;
+﻿using System.Globalization;
 using MathNet.Numerics.Distributions;
-using MathNet.Numerics.Random;
 
 namespace OFS
 {
