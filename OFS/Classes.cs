@@ -38,6 +38,12 @@ namespace OFS {
 			netCharge += powerChange;
 			cable.ChangeCableFlow(powerChange, time);
 		}
+
+		public void SetSolarPanelOutput(double output, double time)
+		{
+			ChangeParkingDemand(output - solarPanelOutput, time);
+			solarPanelOutput = output;
+		}
 	}
 	
 }

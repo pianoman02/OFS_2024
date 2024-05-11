@@ -4,7 +4,7 @@ namespace OFS
 {
     public abstract class Event(double time)
     {
-        public double EventTime = time;
+        public double eventTime = time;
 
         public abstract void CallEvent();
     }
@@ -13,7 +13,7 @@ namespace OFS
         override public void CallEvent()
         {
             Console.WriteLine(History.CarsRejected);
-            State.EventQueue.Clear();
+            Program.eventQueue.Clear();
             // Ik vraag me af wat we hier gaan doen
             // Moeten we alle data netjes afronden? Of kappen we het af?
             // Of misschien laten we het langszaam doodgaan (geen nieuwe autos bijvoorbeeld?)
@@ -24,10 +24,10 @@ namespace OFS
         override public void CallEvent()
         {
             // We make a new CarArrives event for the next arriving car
-            int hour = ((int)Math.Floor(EventTime)) % 24;
-            double nextTime = Random.PoissonSample(Data.ArrivalDistribution,EventTime);
-            State.EventQueue.Enqueue(new CarArrives(nextTime), nextTime);
-            Console.WriteLine(EventTime);
+            int hour = ((int)Math.Floor(eventTime)) % 24;
+            double nextTime = Random.PoissonSample(Data.ArrivalDistribution,eventTime);
+            Program.eventQueue.Enqueue(new CarArrives(nextTime), nextTime);
+            Console.WriteLine(eventTime);
 
             // Now, we try to park the car at most three times
             List<int> triedParkings = new List<int>();
@@ -35,41 +35,26 @@ namespace OFS
             for (int attempt = 0; !emptyparkingfound && attempt < 3; attempt++)
             {
                 // We generate a random parking spot. We must, however, make sure that we don't take one that we already tried
-                int nextparking = -1;
-                bool newparkingtried = false;
-                while (!newparkingtried)
+                int nextParking = -1;
+                bool newParkingTried = false;
+                while (!newParkingTried)
                 {
                     // genrate a random parking spot using the CDF
-                    nextparking = Random.SampleCDF(Data.ParkingDistributionCumulative);
+                    nextParking = Random.SampleCDF(Data.ParkingDistributionCumulative);
                     // We check if we have selected this parking before
-                    newparkingtried = true;
-                    foreach (int parking in triedParkings)
-                    {
-                        if (parking == nextparking)
-                            newparkingtried = false;
-                    }
+                    newParkingTried = !triedParkings.Contains(nextParking);
                 }
+                Station station = Program.state.stations[nextParking];
                 // Add car if there is capacity
-                if (State.CarsOnParking[nextparking] != Data.ParkingCapacities[nextparking])
+                if (station.carCount < station.capacity)
                 {
                     emptyparkingfound = true;
-                    State.CarsOnParking[nextparking]++;
-                    // We generate a random amount of charge, and schedule the moment it is detached
-                    double chargevolume = Random.SampleContCDF(Data.ChargingVolumeCumulativeProbabilty);
-                    double chargetime = chargevolume / 6; /// Assuming greedy charging
-                    State.EventQueue.Enqueue(new StopsCharging(EventTime + chargetime, nextparking), EventTime + chargetime);
-                    // Schedule departure moment
-                    double parkingtime = Random.SampleContCDF(Data.ConnectionTimeCumulativeProbabilty);
-                    parkingtime = Math.Min(parkingtime, 1.4 * chargetime); // to make sure it is lengthend if the parking time is too small.
-                    State.EventQueue.Enqueue(new CarLeaves(EventTime + parkingtime, nextparking), EventTime + parkingtime);
-                    // We change the charge
-                    Cables.ChangeParkingDemand(nextparking, 6, EventTime);
-                    
+                    Program.eventQueue.Enqueue(new StartsCharging(new Car(), station, eventTime), eventTime);
                 }
                 // Add to tried parkings if no capacity
                 else
                 {
-                    triedParkings.Add(nextparking);
+                    triedParkings.Add(nextParking);
                 }
             }
             if (!emptyparkingfound)
@@ -78,42 +63,55 @@ namespace OFS
             }
         }
     }
-    public class StartsCharging(double time) : Event(time)
+    public class StartsCharging(Car car, Station station, double time) : Event(time)
     {
+        readonly Car car = car;
+        readonly Station station = station;
+
+        public override void CallEvent()
+        {
+            station.carCount++;
+            // We generate a random amount of charge, and schedule the moment it is detached
+            double chargeVolume = Random.SampleContCDF(Data.ChargingVolumeCumulativeProbabilty);
+            double chargeTime = chargeVolume / 6; /// Assuming greedy charging
+            Program.eventQueue.Enqueue(new StopsCharging(car, station, eventTime + chargeTime), eventTime + chargeTime);
+            // Schedule departure moment
+            double parkingtime = Random.SampleContCDF(Data.ConnectionTimeCumulativeProbabilty);
+            parkingtime = Math.Min(parkingtime, 1.4 * chargeTime); // to make sure it is lengthend if the parking time is too small.
+            Program.eventQueue.Enqueue(new CarLeaves(station, eventTime + parkingtime), eventTime + parkingtime);
+            // We change the charge
+            station.ChangeParkingDemand(6, eventTime);
+        }
+    }
+    public class StopsCharging(Car car, Station station, double time) : Event(time)
+    {
+        readonly Car car = car;
+        readonly Station station = station;
         public override void CallEvent()
         {
             // todo
         }
     }
-    public class StopsCharging(double time, int parking) : Event(time)
+    public class CarLeaves(Station station, double time) : Event(time)
     {
-        int parking = parking;
+        readonly Station station = station;
         public override void CallEvent()
         {
-            // todo
+            station.carCount--;
         }
     }
-    public class CarLeaves(double time, int parking) : Event(time)
+    public class SolarPanelsChange(Station station, double time) : Event(time)
     {
-        int parking = parking;
-        public override void CallEvent()
-        {
-            State.CarsOnParking[parking]--;
-        }
-    }
-    public class SolarPanelsChange(double time, int parking) : Event(time)
-    {
-        int parking = parking;
+        readonly Station station = station;
         public override void CallEvent()
         {
             // take a random new output of the solar panels
-            double averageoutput = Data.SolarPanelAverages[((int)EventTime)%24];
+            double averageoutput = Data.SolarPanelAverages[((int)eventTime)%24];
             double output = Normal.Sample(averageoutput, 0.15 * averageoutput);
-            Cables.ChangeParkingDemand(parking, output - State.SolarPanelOutput[parking], EventTime);
-            State.SolarPanelOutput[parking] = output;
+            station.SetSolarPanelOutput(output, eventTime);
 
             // Enqueue next solar panel change
-            State.EventQueue.Enqueue(new SolarPanelsChange(EventTime + 1, parking), EventTime + 1);
+            Program.eventQueue.Enqueue(new SolarPanelsChange(station, eventTime + 1), eventTime + 1);
         }
     }
 }

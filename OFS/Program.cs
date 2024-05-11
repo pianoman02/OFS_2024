@@ -6,6 +6,9 @@ namespace OFS
     //delegate void Event();
     internal class Program
     {
+        public static PriorityQueue<Event, double> eventQueue = new();
+        public static State state = new();
+
         static void ReadFile(string filename, List<double> storage)
         {
             var reader = new StreamReader(@"..\..\..\..\Data\" + filename);
@@ -54,16 +57,16 @@ namespace OFS
             // start and run a priority queue
             Console.WriteLine("Starting simulation");
             
-            State.EventQueue.Enqueue(new EndSimulation(100), 100);
-            State.EventQueue.Enqueue(new CarArrives(0), 0);
-            State.EventQueue.Enqueue(new SolarPanelsChange(0, 5), 0);
-            State.EventQueue.Enqueue(new SolarPanelsChange(0, 6), 0);
+            eventQueue.Enqueue(new EndSimulation(100), 100);
+            eventQueue.Enqueue(new CarArrives(0), 0);
+            eventQueue.Enqueue(new SolarPanelsChange(state.stations[5], 0), 0);
+            eventQueue.Enqueue(new SolarPanelsChange(state.stations[6], 0), 0);
             //State.EventQueue.Enqueue(new SolarPanelsChange(0, 0), 0);
             //State.EventQueue.Enqueue(new SolarPanelsChange(0, 1), 0);
 
-            while (State.EventQueue.Count > 0)
+            while (eventQueue.Count > 0)
             {
-                Event e = State.EventQueue.Dequeue();
+                Event e = eventQueue.Dequeue();
                 e.CallEvent();
             }
             Console.WriteLine("Simulation finished");
@@ -80,13 +83,32 @@ namespace OFS
         static public double[] ParkingDistributionCumulative = { 0.15, 0.3, 0.45, 0.65, 0.8, 0.9, 1};
         static public double[] CableCapacities = { 1000, 200, 200, 200, 200, 200, 200, 200, 200, 200 };
     }
-    static public class State
+    public class State
     {
-        static public PriorityQueue<Event, double> EventQueue = new PriorityQueue<Event, double>();
-        static public int[] CarsOnParking = new int[7];
-        static public double[] NetChargeStation = new double[7];
-        static public double[] CableLoad = new double[10];
-        static public double[] SolarPanelOutput = new double[7];
+        public Station[] stations = new Station[7];
+        public Cable[] cables = new Cable[10];
+
+        public State()
+        {
+            cables[0] = new Cable(1000);
+            cables[1] = new Cable(200, cables[0]);
+            cables[2] = new Cable(200, cables[1]);
+            cables[3] = new Cable(200, cables[1]);
+            cables[4] = new Cable(200, cables[1]);
+            cables[5] = new Cable(200, cables[0]);
+            cables[6] = new Cable(200, cables[5]);
+            cables[7] = new Cable(200, cables[5]);
+            cables[8] = new Cable(200, cables[7]);
+            cables[9] = new Cable(200, cables[7]);
+
+            stations[0] = new Station(cables[2], 60);
+            stations[1] = new Station(cables[3], 80);
+            stations[2] = new Station(cables[4], 60);
+            stations[3] = new Station(cables[5], 70);
+            stations[4] = new Station(cables[8], 60);
+            stations[5] = new Station(cables[9], 60);
+            stations[6] = new Station(cables[6], 50);
+        }
     }
     static public class History
     {
