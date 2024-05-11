@@ -12,7 +12,7 @@ namespace OFS
     {
         override public void CallEvent()
         {
-            Console.WriteLine(History.CarsRejected);
+            Console.WriteLine(Program.history.CarsRejected);
             Program.eventQueue.Clear();
             // Ik vraag me af wat we hier gaan doen
             // Moeten we alle data netjes afronden? Of kappen we het af?
@@ -59,7 +59,7 @@ namespace OFS
             }
             if (!emptyparkingfound)
             {
-                History.CarsRejected++;
+                Program.history.CarsRejected++;
             }
         }
     }

@@ -8,6 +8,7 @@ namespace OFS
     {
         public static PriorityQueue<Event, double> eventQueue = new();
         public static State state = new();
+        public static History history = new History(state.cables);
 
         static void ReadFile(string filename, List<double> storage)
         {
@@ -47,13 +48,6 @@ namespace OFS
 
          
             Console.WriteLine("Done");
-            // Initialise lists in History
-            for (int i=0; i<10; i++)
-            {
-                History.CableChangeLoads[i] = new List<double>();
-                History.CableChangeTimes[i] = new List<double>();
-            }
-
             // start and run a priority queue
             Console.WriteLine("Starting simulation");
             
@@ -110,11 +104,11 @@ namespace OFS
             stations[6] = new Station(cables[6], 50);
         }
     }
-    static public class History
+
+     public class History(Cable[] cables)
     {
-        static public List<double>[] CableChangeTimes = new List<double>[10];
-        static public List<double>[] CableChangeLoads = new List<double>[10];
-        static public int CarsRejected = 0;
+        public Cable[] cables = cables;
+        public int CarsRejected = 0;
     }
     static public class Random
     {
