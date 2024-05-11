@@ -24,5 +24,21 @@ namespace OFS {
             upstream?.ChangeCableFlow(powerChange, time);
         }
     }
+
+	public class Station(Cable cable, int capacity)
+	{
+		public Cable cable = cable;
+		public double netCharge = 0;
+		public int carCount = 0;
+		public int capacity = capacity;
+		public double solarPanelOutput = 0;
+
+		public void ChangeParkingDemand(double powerChange, double time)
+		{
+			netCharge += powerChange;
+			cable.ChangeCableFlow(powerChange, time);
+		}
+	}
+	
 }
 
