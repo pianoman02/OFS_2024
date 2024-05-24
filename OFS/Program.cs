@@ -11,7 +11,7 @@ namespace OFS
         public const int FCFS = 2;
         public const int ELFS = 3;
 
-        public static Simulation simulation = new();
+        public static Simulation simulation = new(0, false, []);
 
         static void ReadFile(string filename, List<double> storage)
         {
@@ -53,14 +53,19 @@ namespace OFS
             Console.WriteLine("Done");
             // start and run a priority queue
 
+            List<int>[] solarOptions = [[], [5, 6], [0, 1, 5, 6]];
 
-            for (int i = 0; i <= ELFS; i++) {
-                Console.WriteLine("Starting simulation");
+            for (int strat = 0; strat <= ELFS; strat++) {
+                foreach (bool summer in new List<bool>{true, false}) {
+                    foreach (List<int> solar in solarOptions) {
+                        Console.WriteLine("Starting simulation");
 
-                simulation = new Simulation(i);
-                History result = simulation.RunSimulation();
-                result.DisplayResults();
-                Console.WriteLine("Simulation finished");
+                        simulation = new Simulation(strat, summer, solar);
+                        History result = simulation.RunSimulation();
+                        result.DisplayResults();
+                        Console.WriteLine("Simulation finished");
+                    }
+                }
             }
         }
     }
@@ -72,7 +77,7 @@ namespace OFS
         public State state = new();
         private History history;
         public bool summer;
-        public Simulation(int strategy = Program.ON_ARRIVAL, bool summer = true)
+        public Simulation(int strategy, bool summer, List<int> solar)
         {
             this.strategy = strategy;
             this.summer = summer;
