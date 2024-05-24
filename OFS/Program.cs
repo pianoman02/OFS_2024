@@ -71,9 +71,11 @@ namespace OFS
         private static PriorityQueue<Event, double> eventQueue = new();
         public State state = new();
         private History history;
-        public Simulation(int strategy = Program.ON_ARRIVAL)
+        public bool summer;
+        public Simulation(int strategy = Program.ON_ARRIVAL, bool summer = true)
         {
             this.strategy = strategy;
+            this.summer = summer;
             history = new History(state.cables);
             eventQueue.Enqueue(new EndSimulation(100), 100);
             eventQueue.Enqueue(new CarArrives(0), 0);
