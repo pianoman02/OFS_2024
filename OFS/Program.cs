@@ -6,9 +6,12 @@ namespace OFS
     //delegate void Event();
     internal class Program
     {
-        public static PriorityQueue<Event, double> eventQueue = new();
-        public static State state = new();
-        public static History history = new History(state.cables);
+        public const int ON_ARRIVAL = 0;
+        public const int PRICE_DRIVEN = 1;
+        public const int FCFS = 2;
+        public const int ELFS = 3;
+
+        public static Simulation simulation = new();
 
         static void ReadFile(string filename, List<double> storage)
         {
@@ -49,22 +52,58 @@ namespace OFS
          
             Console.WriteLine("Done");
             // start and run a priority queue
-            Console.WriteLine("Starting simulation");
-            
+
+
+            for (int i = 0; i <= ELFS; i++) {
+                Console.WriteLine("Starting simulation");
+
+                simulation = new Simulation(i);
+                History result = simulation.RunSimulation();
+                result.DisplayResults();
+                Console.WriteLine("Simulation finished");
+            }
+        }
+    }
+
+    public class Simulation
+    {
+        public int strategy;
+        private static PriorityQueue<Event, double> eventQueue = new();
+        public State state = new();
+        private History history;
+        public Simulation(int strategy = Program.ON_ARRIVAL)
+        {
+            this.strategy = strategy;
+            history = new History(state.cables);
             eventQueue.Enqueue(new EndSimulation(100), 100);
             eventQueue.Enqueue(new CarArrives(0), 0);
             eventQueue.Enqueue(new SolarPanelsChange(state.stations[5], 0), 0);
             eventQueue.Enqueue(new SolarPanelsChange(state.stations[6], 0), 0);
-            //State.EventQueue.Enqueue(new SolarPanelsChange(0, 0), 0);
-            //State.EventQueue.Enqueue(new SolarPanelsChange(0, 1), 0);
+        }
 
+        public History RunSimulation()
+        {
             while (eventQueue.Count > 0)
             {
                 Event e = eventQueue.Dequeue();
                 e.CallEvent();
             }
-            Console.WriteLine("Simulation finished");
+            return history;
+        }
 
+        public void PlanEvent(Event e, double t)
+        {
+            eventQueue.Enqueue(e, t);
+        }
+
+        public void EndSimulation()
+        {
+            eventQueue.Clear();
+        }
+
+        public void RejectCar()
+        {
+            history.RejectCar();
         }
     }
     static public class Data
@@ -105,11 +144,22 @@ namespace OFS
         }
     }
 
-     public class History(Cable[] cables)
+    public class History(Cable[] cables)
     {
         public Cable[] cables = cables;
-        public int CarsRejected = 0;
+        private int CarsRejected = 0;
+
+        public void RejectCar()
+        {
+            CarsRejected++;
+        }
+
+        public void DisplayResults()
+        {
+            //Display results here
+        }
     }
+
     static public class Random
     {
         // Picks a number accoring to the cdf
