@@ -14,8 +14,8 @@ linecounter +=1
 for cable in range(10):
     length = int(Lines[linecounter])
     linecounter+=1
-    cabletimes.append(np.arange(length))
-    cableloads.append(np.arange(length))
+    cabletimes.append(np.arange(length,dtype=float))
+    cableloads.append(np.arange(length,dtype = float))
     for i in range(length):
         line = Lines[linecounter]
         linecounter+=1
@@ -26,5 +26,5 @@ for cable in range(10):
 file.close()
 
 plt.figure()
-plt.plot(cabletimes[0],cableloads[0])
+plt.step(cabletimes[0],cableloads[0],where='post') #this function makes steps
 plt.show()

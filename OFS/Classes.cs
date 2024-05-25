@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Specialized;
 
 namespace OFS {
 	public class Car
@@ -13,8 +14,8 @@ namespace OFS {
         public double load = 0; //current load of cable
 		public int capacity = capacity;
 
-        public List<double> changeLoads = []; //Different values for loads the cable has had.
-        public List<double> changeTimes = []; //Times where the load has changed
+        public List<double> changeLoads = [0]; //Different values for loads the cable has had.
+        public List<double> changeTimes = [0]; //Times where the load has changed
 
         public void ChangeCableFlow(double powerChange, double time)
         {
