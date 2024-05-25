@@ -1,5 +1,9 @@
-﻿using System.Globalization;
+﻿//to change value of SOLAROUTPUT -> look in Project,  OFS properties, Build, General, Conditional compilation symbols
+
+using System.Globalization;
+using System.Xml.Schema;
 using MathNet.Numerics.Distributions;
+
 
 namespace OFS
 {
@@ -106,7 +110,7 @@ namespace OFS
         public Strategy strategy;
         private static PriorityQueue<Event, double> eventQueue = new();
         public State state = new();
-        private History history;
+        public History history;
         public bool summer;
         public Simulation(Strategy strategy, bool summer, List<int> solar)
         {
@@ -193,6 +197,9 @@ namespace OFS
     public class History(Cable[] cables)
     {
         public Cable[] cables = cables;
+#if SOLAROUTPUT
+        public List<double> solaroutput = new List<double>();
+#endif
         private int CarsRejected = 0;
 
         public void RejectCar()
@@ -215,6 +222,14 @@ namespace OFS
                 }
             }
             writer.Close();
+#if SOLAROUTPUT
+            writer = new StreamWriter(@"..\..\..\..\Output\solar_" + filename);
+            foreach (double d in solaroutput)
+            {
+                writer.WriteLine(d);
+            }
+            writer.Close();
+#endif
         }
     }
 
