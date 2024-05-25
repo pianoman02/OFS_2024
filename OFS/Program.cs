@@ -84,10 +84,15 @@ namespace OFS
             history = new History(state.cables);
             eventQueue.Enqueue(new EndSimulation(100), 100);
             eventQueue.Enqueue(new CarArrives(0), 0);
-            eventQueue.Enqueue(new SolarPanelsChange(state.stations[5], 0), 0);
-            eventQueue.Enqueue(new SolarPanelsChange(state.stations[6], 0), 0);
-            state.stations[5].enableSolar();
-            state.stations[6].enableSolar();
+            SetSolarOptions(solar);
+        }
+        public void SetSolarOptions(List<int> solar)
+        {
+            foreach (int i in solar)
+            {
+                eventQueue.Enqueue(new SolarPanelsChange(state.stations[i], 0), 0);
+                state.stations[i].enableSolar();
+            }
         }
 
         public History RunSimulation()
