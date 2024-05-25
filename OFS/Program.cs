@@ -86,6 +86,8 @@ namespace OFS
             eventQueue.Enqueue(new CarArrives(0), 0);
             eventQueue.Enqueue(new SolarPanelsChange(state.stations[5], 0), 0);
             eventQueue.Enqueue(new SolarPanelsChange(state.stations[6], 0), 0);
+            state.stations[5].enableSolar();
+            state.stations[6].enableSolar();
         }
 
         public History RunSimulation()
