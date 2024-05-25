@@ -32,6 +32,7 @@ namespace OFS {
 		public int carCount = 0;
 		public int capacity = capacity;
 		public double solarPanelOutput = 0;
+		public bool hasSolar = false;
 
 		public void ChangeParkingDemand(double powerChange, double time)
 		{
@@ -41,10 +42,17 @@ namespace OFS {
 
 		public void SetSolarPanelOutput(double output, double time)
 		{
+			if (!hasSolar) {
+				throw new Exception("This station does not have solar panels");
+			}
 			ChangeParkingDemand(output - solarPanelOutput, time);
 			solarPanelOutput = output;
 		}
+
+		public void enableSolar()
+		{
+			hasSolar = true;
+		}
 	}
-	
 }
 

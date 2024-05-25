@@ -12,8 +12,7 @@ namespace OFS
     {
         override public void CallEvent()
         {
-            Console.WriteLine(Program.history.CarsRejected);
-            Program.eventQueue.Clear();
+            Program.simulation.EndSimulation();
             // Ik vraag me af wat we hier gaan doen
             // Moeten we alle data netjes afronden? Of kappen we het af?
             // Of misschien laten we het langszaam doodgaan (geen nieuwe autos bijvoorbeeld?)
@@ -26,7 +25,7 @@ namespace OFS
             // We make a new CarArrives event for the next arriving car
             int hour = ((int)Math.Floor(eventTime)) % 24;
             double nextTime = Random.PoissonSample(Data.ArrivalDistribution,eventTime);
-            Program.eventQueue.Enqueue(new CarArrives(nextTime), nextTime);
+            Program.simulation.PlanEvent(new CarArrives(nextTime), nextTime);
             Console.WriteLine(eventTime);
 
             // Now, we try to park the car at most three times
@@ -44,12 +43,12 @@ namespace OFS
                     // We check if we have selected this parking before
                     newParkingTried = !triedParkings.Contains(nextParking);
                 }
-                Station station = Program.state.stations[nextParking];
+                Station station = Program.simulation.state.stations[nextParking];
                 // Add car if there is capacity
                 if (station.carCount < station.capacity)
                 {
                     emptyparkingfound = true;
-                    Program.eventQueue.Enqueue(new StartsCharging(new Car(), station, eventTime), eventTime);
+                    Program.simulation.PlanEvent(new StartsCharging(new Car(), station, eventTime), eventTime);
                 }
                 // Add to tried parkings if no capacity
                 else
@@ -59,7 +58,7 @@ namespace OFS
             }
             if (!emptyparkingfound)
             {
-                Program.history.CarsRejected++;
+                Program.simulation.RejectCar();
             }
         }
     }
@@ -74,11 +73,11 @@ namespace OFS
             // We generate a random amount of charge, and schedule the moment it is detached
             double chargeVolume = Random.SampleContCDF(Data.ChargingVolumeCumulativeProbabilty);
             double chargeTime = chargeVolume / 6; /// Assuming greedy charging
-            Program.eventQueue.Enqueue(new StopsCharging(car, station, eventTime + chargeTime), eventTime + chargeTime);
+            Program.simulation.PlanEvent(new StopsCharging(car, station, eventTime + chargeTime), eventTime + chargeTime);
             // Schedule departure moment
             double parkingtime = Random.SampleContCDF(Data.ConnectionTimeCumulativeProbabilty);
             parkingtime = Math.Min(parkingtime, 1.4 * chargeTime); // to make sure it is lengthend if the parking time is too small.
-            Program.eventQueue.Enqueue(new CarLeaves(station, eventTime + parkingtime), eventTime + parkingtime);
+            Program.simulation.PlanEvent(new CarLeaves(station, eventTime + parkingtime), eventTime + parkingtime);
             // We change the charge
             station.ChangeParkingDemand(6, eventTime);
         }
@@ -111,7 +110,7 @@ namespace OFS
             station.SetSolarPanelOutput(output, eventTime);
 
             // Enqueue next solar panel change
-            Program.eventQueue.Enqueue(new SolarPanelsChange(station, eventTime + 1), eventTime + 1);
+            Program.simulation.PlanEvent(new SolarPanelsChange(station, eventTime + 1), eventTime + 1);
         }
     }
 }
