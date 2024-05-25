@@ -37,6 +37,21 @@ namespace OFS
                 output.Add(cumProb);
             }
         }
+        static void ReadTwoColumnFile(string filename, List<double> output1, List<double> output2)
+        {
+            var reader = new StreamReader(@"..\..\..\..\Data\" + filename);
+
+            CultureInfo culture = new CultureInfo("nl");
+            reader.ReadLine(); // discard first line
+            while (!reader.EndOfStream)
+            {
+                var line = reader.ReadLine();
+                var values = line.Split(';');
+                output1.Add(double.Parse(values[1], culture));
+                output2.Add(double.Parse(values[1], culture));
+            }
+
+        }
         static void Main(string[] args)
         {
             Console.Write("Reading input...");
@@ -45,9 +60,7 @@ namespace OFS
             ReadFile("arrival_hours.csv", Data.ArrivalDistribution);
             ReadCumProb("charging_volume.csv", Data.ChargingVolumeCumulativeProbabilty);
             ReadCumProb("connection_time.csv", Data.ConnectionTimeCumulativeProbabilty);
-            // TODO: Read solar panel data, dependent on summer or winter.
-            for (int i = 0; i < 24; i++)
-                Data.SolarPanelAverages.Add(0.1);
+            ReadTwoColumnFile("solar.csv", Data.SolarPanelAveragesWinter, Data.SolarPanelAveragesSummer);
 
          
             Console.WriteLine("Done");
@@ -125,7 +138,8 @@ namespace OFS
         static public List<double> ArrivalDistribution = new List<double>();
         static public List<double> ChargingVolumeCumulativeProbabilty = new List<double>();
         static public List<double> ConnectionTimeCumulativeProbabilty = new List<double>();
-        static public List<double> SolarPanelAverages = new List<double>();
+        static public List<double> SolarPanelAveragesSummer = new List<double>();
+        static public List<double> SolarPanelAveragesWinter = new List<double>();
         static public int[] ParkingCapacities = { 60, 80, 60, 70, 60, 60, 50 }; // zero based, so all the spot move one number
         static public double[] ParkingDistributionCumulative = { 0.15, 0.3, 0.45, 0.65, 0.8, 0.9, 1};
         static public double[] CableCapacities = { 1000, 200, 200, 200, 200, 200, 200, 200, 200, 200 };

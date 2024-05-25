@@ -105,7 +105,9 @@ namespace OFS
         public override void CallEvent()
         {
             // take a random new output of the solar panels
-            double averageoutput = Data.SolarPanelAverages[((int)eventTime)%24];
+            double averageoutput = Program.simulation.summer ?
+                Data.SolarPanelAveragesSummer[((int)eventTime)%24]
+                : Data.SolarPanelAveragesWinter[((int)eventTime) % 24];
             double output = Normal.Sample(averageoutput, 0.15 * averageoutput);
             station.SetSolarPanelOutput(output, eventTime);
 
