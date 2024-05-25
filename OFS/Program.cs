@@ -1,5 +1,6 @@
 ﻿//to change value of SOLAROUTPUT -> look in Project,  OFS properties, Build, General, Conditional compilation symbols
 
+using System.Drawing;
 using System.Globalization;
 using System.Xml.Schema;
 using MathNet.Numerics.Distributions;
@@ -58,7 +59,7 @@ namespace OFS
                 var line = reader.ReadLine();
                 var values = line.Split(';');
                 output1.Add(double.Parse(values[1], culture));
-                output2.Add(double.Parse(values[1], culture));
+                output2.Add(double.Parse(values[2], culture));
             }
 
         }
@@ -111,23 +112,22 @@ namespace OFS
         private static PriorityQueue<Event, double> eventQueue = new();
         public State state = new();
         public History history;
+        public List<int> solarStations;
         public bool summer;
-        public Simulation(Strategy strategy, bool summer, List<int> solar)
+        public Simulation(Strategy strategy, bool summer, List<int> solarStations)
         {
+            this.solarStations = solarStations;
             this.strategy = strategy;
             this.summer = summer;
             history = new History(state.cables);
             eventQueue.Enqueue(new EndSimulation(100), 100);
             eventQueue.Enqueue(new CarArrives(0), 0);
-            SetSolarOptions(solar);
-        }
-        public void SetSolarOptions(List<int> solar)
-        {
-            foreach (int i in solar)
+            foreach (int i in solarStations)
             {
-                eventQueue.Enqueue(new SolarPanelsChange(state.stations[i], 0), 0);
                 state.stations[i].enableSolar();
             }
+            if (solarStations.Count > 0)
+                eventQueue.Enqueue(new SolarPanelsChange(0), 0);
         }
 
         public History RunSimulation()
