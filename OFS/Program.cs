@@ -3,13 +3,19 @@ using MathNet.Numerics.Distributions;
 
 namespace OFS
 {
-    //delegate void Event();
+    public enum Strategy
+    {
+        ON_ARRIVAL,
+        PRICE_DRIVEN,
+        FCFS,
+        ELFS
+    }
     internal class Program
     {
-        public const int ON_ARRIVAL = 0;
-        public const int PRICE_DRIVEN = 1;
-        public const int FCFS = 2;
-        public const int ELFS = 3;
+        //public const int ON_ARRIVAL = 0;
+        //public const int PRICE_DRIVEN = 1;
+        //public const int FCFS = 2;
+        //public const int ELFS = 3;
 
         public static Simulation simulation = new(0, false, []);
 
@@ -52,6 +58,18 @@ namespace OFS
             }
 
         }
+        static string filename(Strategy strat, bool summer,int solar)
+        {
+            string name = "";
+            name += strat.ToString();
+            name += "_";
+            name += summer ? "summer" : "winter";
+            name += "_";
+            name += "solar" + solar.ToString();
+            name += ".txt";
+            return name;
+
+        }
         static void Main(string[] args)
         {
             Console.Write("Reading input...");
@@ -68,14 +86,14 @@ namespace OFS
 
             List<int>[] solarOptions = [[], [5, 6], [0, 1, 5, 6]];
 
-            for (int strat = 0; strat <= ELFS; strat++) {
+            for (Strategy strat = Strategy.ON_ARRIVAL; strat <= Strategy.ELFS; strat++) {
                 foreach (bool summer in new List<bool>{true, false}) {
-                    foreach (List<int> solar in solarOptions) {
+                    for(int solar = 0; solar<3; solar++) {
                         Console.WriteLine("Starting simulation");
 
-                        simulation = new Simulation(strat, summer, solar);
+                        simulation = new Simulation(strat, summer, solarOptions[solar]);
                         History result = simulation.RunSimulation();
-                        result.DisplayResults();
+                        result.OutputResults(filename(strat,summer,solar));
                         Console.WriteLine("Simulation finished");
                     }
                 }
@@ -85,12 +103,12 @@ namespace OFS
 
     public class Simulation
     {
-        public int strategy;
+        public Strategy strategy;
         private static PriorityQueue<Event, double> eventQueue = new();
         public State state = new();
         private History history;
         public bool summer;
-        public Simulation(int strategy, bool summer, List<int> solar)
+        public Simulation(Strategy strategy, bool summer, List<int> solar)
         {
             this.strategy = strategy;
             this.summer = summer;
@@ -182,9 +200,21 @@ namespace OFS
             CarsRejected++;
         }
 
-        public void DisplayResults()
+        public void OutputResults(string filename)
         {
-            //Display results here
+            var writer = new StreamWriter(@"..\..\..\..\Output\" + filename);
+            writer.WriteLine(CarsRejected);
+            foreach (Cable c in cables)
+            {
+                writer.WriteLine(c.changeLoads.Count);
+                for (int i=0; i<c.changeLoads.Count; i++)
+                {
+                    writer.Write(c.changeTimes[i]);
+                    writer.Write(";");
+                    writer.WriteLine(c.changeLoads[i]);                
+                }
+            }
+            writer.Close();
         }
     }
 
