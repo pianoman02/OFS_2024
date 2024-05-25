@@ -26,5 +26,5 @@ for cable in range(10):
 file.close()
 
 plt.figure()
-plt.plot(cabletimes[1],cableloads[1])
+plt.plot(cabletimes[0],cableloads[0])
 plt.show()

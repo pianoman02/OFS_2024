@@ -88,7 +88,7 @@ namespace OFS
         readonly Station station = station;
         public override void CallEvent()
         {
-            // todo
+            station.ChangeParkingDemand(-6, eventTime);
         }
     }
     public class CarLeaves(Station station, double time) : Event(time)
@@ -99,6 +99,8 @@ namespace OFS
             station.carCount--;
         }
     }
+    // TODO: Make sure all of the stations change output by the same amount
+    // !!
     public class SolarPanelsChange(Station station, double time) : Event(time)
     {
         readonly Station station = station;
