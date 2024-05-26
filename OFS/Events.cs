@@ -194,7 +194,11 @@ namespace OFS
         readonly Car car = car;
         public override void CallEvent()
         {
+            car.fullyCharged = true;
             car.station.ChangeParkingDemand(-6, eventTime);
+            if (car.timeToDepart) {
+                Program.simulation.PlanEvent(new CarLeaves(car.station, eventTime), eventTime);
+            }
         }
     }
     public class CarLeaves(Station station, double time) : Event(time)
@@ -203,6 +207,18 @@ namespace OFS
         public override void CallEvent()
         {
             station.carCount--;
+        }
+    }
+
+    public class DesiredDeparture(Car car, double time) : Event(time)
+    {
+        readonly Car car = car;
+        public override void CallEvent()
+        {
+            car.timeToDepart = true;
+            if (car.fullyCharged) {
+                Program.simulation.PlanEvent(new CarLeaves(car.station, eventTime), eventTime);
+            }
         }
     }
     // TODO: Make sure all of the stations change output by the same amount

@@ -105,7 +105,7 @@ namespace OFS
     public class Simulation
     {
         public Strategy strategy;
-        private PriorityQueue<Event, double> eventQueue = new();
+        private static PriorityQueue<Event, double> eventQueue = new();
         public State state = new();
         public History history;
         public List<int> solarStations;
