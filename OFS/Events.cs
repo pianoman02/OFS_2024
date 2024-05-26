@@ -138,7 +138,7 @@ namespace OFS
 
                     Car car = new(station);
                     // We generate a charge volume and parking time
-                    double chargeTime = car.chargeVolume / 6; /// Assuming charging during just one interval
+                    double chargeTime = car.chargeVolume / Program.CHARGE_SPEED; /// Assuming charging during just one interval
                     double parkingTime = RandomDists.SampleContCDF(Data.ConnectionTimeCumulativeProbabilty);
                     parkingTime = Math.Max(parkingTime, 1.4 * chargeTime); // to make sure it is lengthend if the parking time is too small.
                     double departureTime = eventTime + parkingTime;
@@ -155,7 +155,7 @@ namespace OFS
                             if (Program.simulation.strategy == Strategy.FCFS) {
                                 car.prio = eventTime;
                             } else {
-                                car.prio = departureTime - car.chargeVolume / 6;
+                                car.prio = departureTime - car.chargeVolume / Program.CHARGE_SPEED;
                             }
                             Program.simulation.Wait(car);
                         }
@@ -186,9 +186,9 @@ namespace OFS
         public override void CallEvent()
         {
             // We generate a random amount of charge, and schedule the moment it is detached
-            double chargeTime = car.chargeVolume / 6; /// Assuming greedy charging
+            double chargeTime = car.chargeVolume / Program.CHARGE_SPEED; /// Assuming greedy charging
             Program.simulation.PlanEvent(new StopsCharging(car, eventTime + chargeTime));
-            car.station.ChangeParkingDemand(6, eventTime);
+            car.station.ChangeParkingDemand(Program.CHARGE_SPEED, eventTime);
         }
     }
     public class StopsCharging(Car car, double time) : Event(time)
@@ -197,7 +197,7 @@ namespace OFS
         public override void CallEvent()
         {
             car.fullyCharged = true;
-            car.station.ChangeParkingDemand(-6, eventTime);
+            car.station.ChangeParkingDemand(-Program.CHARGE_SPEED, eventTime);
             if (car.timeToDepart) {
                 Program.simulation.PlanEvent(new CarLeaves(car.station, eventTime));
             }

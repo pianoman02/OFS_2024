@@ -16,6 +16,7 @@ namespace OFS
     internal class Program
     {
         public static Simulation simulation = new(0, false, []);
+        public const int CHARGE_SPEED = 6;
 
         static void ReadFile(string filename, List<double> storage)
         {
