@@ -144,7 +144,6 @@ namespace OFS
                     parkingTime = Math.Max(parkingTime, 1.4 * chargeTime); // to make sure it is lengthend if the parking time is too small.
                     double departureTime = eventTime + parkingTime;
 
-
                     if (Program.simulation.strategy <= Strategy.PRICE_DRIVEN)
                     {
                         double startTime = OptimalStartTime(eventTime, departureTime, chargeTime);
@@ -163,6 +162,11 @@ namespace OFS
                         }
                     }
 
+                    if (Program.simulation.strategy <= Strategy.PRICE_DRIVEN) {
+                        Program.simulation.PlanEvent(new CarLeaves(station, departureTime));
+                    } else {
+                        Program.simulation.PlanEvent(new DesiredDeparture(car, departureTime));
+                    }
                 }
                 // Add to tried parkings if no capacity
                 else
