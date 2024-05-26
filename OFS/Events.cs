@@ -1,7 +1,15 @@
 ﻿using MathNet.Numerics.Distributions;
+using System.Reflection;
+using static System.Collections.Specialized.BitVector32;
 
 namespace OFS
 {
+    struct PriceChange(double time, double priceafter,bool firstencounter)
+    {
+        public double time = time;
+        public double priceafter = priceafter;
+        public bool firstencounter = firstencounter;
+    }
     public abstract class Event(double time)
     {
         public double eventTime = time;
@@ -20,11 +28,83 @@ namespace OFS
     }
     public class CarArrives(double time) : Event(time)
     {
+        private int NextPrice(int interval)
+        {
+            switch (interval % 6)
+            {
+                case 0:
+                case 1:
+                    return 16;
+                case 2:
+                case 3:
+                    return 18;
+                case 4:
+                    return 22;
+                case 5:
+                    return 20;
+            }
+            throw new Exception("Interval was not an integer");
+        }
+        private void PriceDriven(double eventTime, double endtime, double chargeTime, Station station)
+        {
+            // Implementing the algorithm in the report
+            PriorityQueue<PriceChange, double> sweep = new PriorityQueue<PriceChange, Double>();
+
+            int begininterval = (int) eventTime / 4; // round down
+            int beginprice = NextPrice(begininterval);
+
+            sweep.Enqueue(new PriceChange(eventTime, beginprice, true), eventTime);
+            sweep.Enqueue(new PriceChange(eventTime + chargeTime, beginprice, false), eventTime + chargeTime);
+            begininterval++;
+            for (; 4 * begininterval < endtime; begininterval++)
+            {
+                if (begininterval == 1 || begininterval == 3)
+                    continue; // there is no change here
+                double afterprice = NextPrice(begininterval);
+                sweep.Enqueue(new PriceChange(4 * begininterval, afterprice, true), 4 * begininterval);
+                sweep.Enqueue(new PriceChange(4 * begininterval + chargeTime, afterprice, false), 4 * begininterval + chargeTime);
+            }
+            sweep.Enqueue(new PriceChange(endtime, 1000, true), endtime);
+            sweep.Enqueue(new PriceChange(endtime + chargeTime, 1000, false), endtime + chargeTime);
+
+            double price = 0;
+            double previoustime = 0;
+            double leftprice = 0; double rightprice = 0;
+            double minprice = 10000000;
+            double minleft = -1;
+            double minright = -1;
+            bool withinintervals = false;
+            while (sweep.Count > 0)
+            {
+                var pc = sweep.Dequeue();
+                price += (pc.time - previoustime) * (rightprice - leftprice);
+                if (pc.firstencounter)
+                {
+                    rightprice = pc.priceafter;
+                }
+                if (!pc.firstencounter)
+                {
+                    withinintervals = true;
+                    leftprice = pc.priceafter;
+                }
+                if (withinintervals && price + 1e-3 < minprice)
+                {
+                    minprice = price;
+                    minright = pc.time;
+                    minleft = pc.time - chargeTime;
+                }
+                previoustime = pc.time;
+            }
+            var car = new Car();
+            Program.simulation.PlanEvent(new StartsCharging(car, station, minleft), minleft);
+            Program.simulation.PlanEvent(new StopsCharging(car, station, minright), minright);
+            Program.simulation.PlanEvent(new CarLeaves(station, endtime), endtime);
+        }
         override public void CallEvent()
         {
             // We make a new CarArrives event for the next arriving car
             int hour = ((int)Math.Floor(eventTime)) % 24;
-            double nextTime = Random.PoissonSample(Data.ArrivalDistribution,eventTime);
+            double nextTime = RandomDists.PoissonSample(Data.ArrivalDistribution,eventTime);
             Program.simulation.PlanEvent(new CarArrives(nextTime), nextTime);
             Console.WriteLine(eventTime);
 
@@ -39,7 +119,7 @@ namespace OFS
                 while (!newParkingTried)
                 {
                     // genrate a random parking spot using the CDF
-                    nextParking = Random.SampleCDF(Data.ParkingDistributionCumulative);
+                    nextParking = RandomDists.SampleCDF(Data.ParkingDistributionCumulative);
                     // We check if we have selected this parking before
                     newParkingTried = !triedParkings.Contains(nextParking);
                 }
@@ -48,7 +128,32 @@ namespace OFS
                 if (station.carCount < station.capacity)
                 {
                     emptyparkingfound = true;
-                    Program.simulation.PlanEvent(new StartsCharging(new Car(), station, eventTime), eventTime);
+                    station.carCount++;
+                    // We generate a charge volume and parking time
+                    double chargeVolume = RandomDists.SampleContCDF(Data.ChargingVolumeCumulativeProbabilty);
+                    double chargeTime = chargeVolume / 6; /// Assuming charging during just one interval
+                    double parkingtime = RandomDists.SampleContCDF(Data.ConnectionTimeCumulativeProbabilty);
+                    parkingtime = Math.Max(parkingtime, 1.4 * chargeTime); // to make sure it is lengthend if the parking time is too small.
+                    
+                    switch (Program.simulation.strategy)
+                    {
+                        case Strategy.ON_ARRIVAL:
+                            var car = new Car();
+                            Program.simulation.PlanEvent(new StartsCharging(car, station, eventTime), eventTime);
+                            Program.simulation.PlanEvent(new StopsCharging(car, station, eventTime + chargeTime), eventTime + chargeTime);
+                            Program.simulation.PlanEvent(new CarLeaves(station, eventTime + parkingtime), eventTime + parkingtime);
+                            break;
+                        case Strategy.PRICE_DRIVEN:
+                            PriceDriven(eventTime, eventTime + parkingtime, chargeTime, station);
+                            break;
+                        case Strategy.FCFS:
+                            // Todo
+                            break;
+                        case Strategy.ELFS:
+                            // Todo
+                            break;
+
+                    }
                 }
                 // Add to tried parkings if no capacity
                 else
@@ -68,17 +173,7 @@ namespace OFS
         readonly Station station = station;
 
         public override void CallEvent()
-        {
-            station.carCount++;
-            // We generate a random amount of charge, and schedule the moment it is detached
-            double chargeVolume = Random.SampleContCDF(Data.ChargingVolumeCumulativeProbabilty);
-            double chargeTime = chargeVolume / 6; /// Assuming greedy charging
-            Program.simulation.PlanEvent(new StopsCharging(car, station, eventTime + chargeTime), eventTime + chargeTime);
-            // Schedule departure moment
-            double parkingtime = Random.SampleContCDF(Data.ConnectionTimeCumulativeProbabilty);
-            parkingtime = Math.Min(parkingtime, 1.4 * chargeTime); // to make sure it is lengthend if the parking time is too small.
-            Program.simulation.PlanEvent(new CarLeaves(station, eventTime + parkingtime), eventTime + parkingtime);
-            // We change the charge
+        { 
             station.ChangeParkingDemand(6, eventTime);
         }
     }
