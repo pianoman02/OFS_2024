@@ -9,7 +9,14 @@
 
 		public bool CanCharge()
 		{
-			throw new NotImplementedException(); //TODO: bepalen of het netwerk voldoende capaciteit heeft om deze auto nu te laten laden
+			Cable? cable = station.cable;
+			while (cable != null) {
+				if (cable.capacity - cable.load - 6 < 0) {
+					return false;
+				}
+				cable = cable.upstream;
+			}
+			return true;
 		}
 	}
 
