@@ -77,6 +77,13 @@ namespace OFS
         }
         static void Main(string[] args)
         {
+            double a = 4.23456445;
+            int b = 2;
+            Console.WriteLine(a / b);
+
+
+
+
             Console.Write("Reading input...");
 
             // read data from files
@@ -233,12 +240,13 @@ namespace OFS
         }
     }
 
-    static public class Random
+    public static class RandomDists
     {
         // Picks a number accoring to the cdf
-        static public int SampleCDF(IList<double> cdf)
+        public static Random rng = new Random(42);
+        public static int SampleCDF(IList<double> cdf)
         {
-            double r = ContinuousUniform.Sample(0, 1);
+            double r = ContinuousUniform.Sample(rng,0, 1);
             for (int i = 0; i < cdf.Count(); i++)
             {
                 if (r < cdf[i])
@@ -249,10 +257,10 @@ namespace OFS
             throw new Exception("cdf didn't end with a 1");
         }
         // Picks an interval according to the cdf and takes an arbitrary number in this interval
-        static public double SampleContCDF(IList<double> cdf)
+        public static double SampleContCDF(IList<double> cdf)
         {
             int val = SampleCDF(cdf);
-            return ContinuousUniform.Sample(val, val + 1);
+            return ContinuousUniform.Sample(rng,val, val + 1);
         }
         /// <summary>
         /// Takes an exponential amount of time, but corrects for the fact that that might cross the hour tickmark.
@@ -260,7 +268,7 @@ namespace OFS
         /// <param name="pdf"></param>
         /// <param name="currenttime"></param>
         /// <returns></returns>
-        static public double PoissonSample(IList<double> pdf, double currenttime)
+        public static double PoissonSample(IList<double> pdf, double currenttime)
         {
             // TODO: This method should be checked statistically.
             int hour = ((int)Math.Floor(currenttime));
@@ -268,7 +276,7 @@ namespace OFS
             double deltaTime =0;
             while (higher)
             {
-                deltaTime = Exponential.Sample(Data.ArrivalDistribution[hour%24] * 750);
+                deltaTime = Exponential.Sample(rng,Data.ArrivalDistribution[hour%24] * 750);
                 if (currenttime + deltaTime < hour + 1)
                     higher = false;
                 else

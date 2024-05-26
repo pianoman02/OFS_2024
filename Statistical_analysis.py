@@ -1,7 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 
-file = open(r"Output/ELFS_summer_solar1.txt","r")
+file = open(r"Output/PRICE_DRIVEN_summer_solar0.txt","r")
 
 cabletimes = []
 cableloads = []
