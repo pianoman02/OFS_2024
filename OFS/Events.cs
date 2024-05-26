@@ -1,6 +1,4 @@
 ﻿using MathNet.Numerics.Distributions;
-using System.Reflection;
-using static System.Collections.Specialized.BitVector32;
 
 namespace OFS
 {
@@ -45,7 +43,7 @@ namespace OFS
             }
             throw new Exception("Interval was not an integer");
         }
-        private void PriceDriven(double eventTime, double endtime, double chargeTime, Station station)
+        private double PriceDriven(double eventTime, double endtime, double chargeTime)
         {
             // Implementing the algorithm in the report
             PriorityQueue<PriceChange, double> sweep = new PriorityQueue<PriceChange, Double>();
@@ -72,7 +70,6 @@ namespace OFS
             double leftprice = 0; double rightprice = 0;
             double minprice = 10000000;
             double minleft = -1;
-            double minright = -1;
             bool withinintervals = false;
             while (sweep.Count > 0)
             {
@@ -90,15 +87,25 @@ namespace OFS
                 if (withinintervals && price + 1e-3 < minprice)
                 {
                     minprice = price;
-                    minright = pc.time;
                     minleft = pc.time - chargeTime;
                 }
                 previoustime = pc.time;
             }
-            var car = new Car();
-            Program.simulation.PlanEvent(new StartsCharging(car, station, minleft), minleft);
-            Program.simulation.PlanEvent(new StopsCharging(car, station, minright), minright);
-            Program.simulation.PlanEvent(new CarLeaves(station, endtime), endtime);
+
+            return minleft;
+        }
+        
+        public double OptimalStartTime(double currentTime, double departureTime, double chargeTime)
+        {
+            switch (Program.simulation.strategy) {
+                case Strategy.ON_ARRIVAL:
+                    return currentTime;
+                case Strategy.PRICE_DRIVEN:
+                    //TODO: price driven starttijd implementeren
+                    return PriceDriven(currentTime, departureTime, chargeTime);
+                default:
+                    throw new Exception("This function should not be called in this scenario");
+            }
         }
         override public void CallEvent()
         {
@@ -106,6 +113,7 @@ namespace OFS
             int hour = ((int)Math.Floor(eventTime)) % 24;
             double nextTime = RandomDists.PoissonSample(Data.ArrivalDistribution,eventTime);
             Program.simulation.PlanEvent(new CarArrives(nextTime), nextTime);
+
             Console.WriteLine(eventTime);
 
             // Now, we try to park the car at most three times
@@ -129,31 +137,33 @@ namespace OFS
                 {
                     emptyparkingfound = true;
                     station.carCount++;
-                    // We generate a charge volume and parking time
-                    double chargeVolume = RandomDists.SampleContCDF(Data.ChargingVolumeCumulativeProbabilty);
-                    double chargeTime = chargeVolume / 6; /// Assuming charging during just one interval
-                    double parkingtime = RandomDists.SampleContCDF(Data.ConnectionTimeCumulativeProbabilty);
-                    parkingtime = Math.Max(parkingtime, 1.4 * chargeTime); // to make sure it is lengthend if the parking time is too small.
-                    
-                    switch (Program.simulation.strategy)
-                    {
-                        case Strategy.ON_ARRIVAL:
-                            var car = new Car();
-                            Program.simulation.PlanEvent(new StartsCharging(car, station, eventTime), eventTime);
-                            Program.simulation.PlanEvent(new StopsCharging(car, station, eventTime + chargeTime), eventTime + chargeTime);
-                            Program.simulation.PlanEvent(new CarLeaves(station, eventTime + parkingtime), eventTime + parkingtime);
-                            break;
-                        case Strategy.PRICE_DRIVEN:
-                            PriceDriven(eventTime, eventTime + parkingtime, chargeTime, station);
-                            break;
-                        case Strategy.FCFS:
-                            // Todo
-                            break;
-                        case Strategy.ELFS:
-                            // Todo
-                            break;
 
+                    Car car = new(station);
+                    // We generate a charge volume and parking time
+                    double chargeTime = car.chargeVolume / 6; /// Assuming charging during just one interval
+                    double parkingTime = RandomDists.SampleContCDF(Data.ConnectionTimeCumulativeProbabilty);
+                    parkingTime = Math.Max(parkingTime, 1.4 * chargeTime); // to make sure it is lengthend if the parking time is too small.
+                    double departureTime = eventTime + parkingTime;
+
+
+                    if (Program.simulation.strategy <= Strategy.PRICE_DRIVEN)
+                    {
+                        double startTime = OptimalStartTime(eventTime, departureTime, chargeTime);
+                        Program.simulation.PlanEvent(new StartsCharging(car, startTime), startTime);
+                    } else {
+                        if (car.CanCharge()) {
+                            Program.simulation.PlanEvent(new StartsCharging(car, eventTime), eventTime);
+                        }
+                        else {
+                            if (Program.simulation.strategy == Strategy.FCFS) {
+                                car.prio = eventTime;
+                            } else {
+                                car.prio = departureTime - car.chargeVolume / 6;
+                            }
+                            Program.simulation.Wait(car);
+                        }
                     }
+
                 }
                 // Add to tried parkings if no capacity
                 else
@@ -167,23 +177,24 @@ namespace OFS
             }
         }
     }
-    public class StartsCharging(Car car, Station station, double time) : Event(time)
+    public class StartsCharging(Car car, double time) : Event(time)
     {
         readonly Car car = car;
-        readonly Station station = station;
 
         public override void CallEvent()
-        { 
-            station.ChangeParkingDemand(6, eventTime);
+        {
+            // We generate a random amount of charge, and schedule the moment it is detached
+            double chargeTime = car.chargeVolume / 6; /// Assuming greedy charging
+            Program.simulation.PlanEvent(new StopsCharging(car, eventTime + chargeTime), eventTime + chargeTime);
+            car.station.ChangeParkingDemand(6, eventTime);
         }
     }
-    public class StopsCharging(Car car, Station station, double time) : Event(time)
+    public class StopsCharging(Car car, double time) : Event(time)
     {
         readonly Car car = car;
-        readonly Station station = station;
         public override void CallEvent()
         {
-            station.ChangeParkingDemand(-6, eventTime);
+            car.station.ChangeParkingDemand(-6, eventTime);
         }
     }
     public class CarLeaves(Station station, double time) : Event(time)

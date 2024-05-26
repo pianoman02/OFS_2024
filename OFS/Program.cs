@@ -1,8 +1,6 @@
 ﻿//to change value of SOLAROUTPUT -> look in Project,  OFS properties, Build, General, Conditional compilation symbols
 
-using System.Drawing;
 using System.Globalization;
-using System.Xml.Schema;
 using MathNet.Numerics.Distributions;
 
 
@@ -17,11 +15,6 @@ namespace OFS
     }
     internal class Program
     {
-        //public const int ON_ARRIVAL = 0;
-        //public const int PRICE_DRIVEN = 1;
-        //public const int FCFS = 2;
-        //public const int ELFS = 3;
-
         public static Simulation simulation = new(0, false, []);
 
         static void ReadFile(string filename, List<double> storage)
@@ -81,9 +74,6 @@ namespace OFS
             int b = 2;
             Console.WriteLine(a / b);
 
-
-
-
             Console.Write("Reading input...");
 
             // read data from files
@@ -92,7 +82,6 @@ namespace OFS
             ReadCumProb("connection_time.csv", Data.ConnectionTimeCumulativeProbabilty);
             ReadTwoColumnFile("solar.csv", Data.SolarPanelAveragesWinter, Data.SolarPanelAveragesSummer);
 
-         
             Console.WriteLine("Done");
             // start and run a priority queue
 
@@ -116,7 +105,7 @@ namespace OFS
     public class Simulation
     {
         public Strategy strategy;
-        private static PriorityQueue<Event, double> eventQueue = new();
+        private PriorityQueue<Event, double> eventQueue = new();
         public State state = new();
         public History history;
         public List<int> solarStations;
@@ -129,12 +118,7 @@ namespace OFS
             history = new History(state.cables);
             eventQueue.Enqueue(new EndSimulation(100), 100);
             eventQueue.Enqueue(new CarArrives(0), 0);
-            foreach (int i in solarStations)
-            {
-                state.stations[i].enableSolar();
-            }
-            if (solarStations.Count > 0)
-                eventQueue.Enqueue(new SolarPanelsChange(0), 0);
+            eventQueue.Enqueue(new SolarPanelsChange(0), 0);
         }
 
         public History RunSimulation()
@@ -161,6 +145,17 @@ namespace OFS
         {
             history.RejectCar();
         }
+
+        internal void Wait(Car car)
+        {
+            for (int i = 0; i < state.waiting.Count; i++) {
+                if (car.prio < state.waiting[i].prio) {
+                    state.waiting.Insert(i, car);
+                    return;
+                }
+            }
+            state.waiting.Add(car);
+        }
     }
     static public class Data
     {
@@ -175,6 +170,7 @@ namespace OFS
     }
     public class State
     {
+        public List<Car> waiting = new();
         public Station[] stations = new Station[7];
         public Cable[] cables = new Cable[10];
 
