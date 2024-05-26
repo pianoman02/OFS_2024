@@ -156,6 +156,17 @@ namespace OFS
             }
             state.waiting.Add(car);
         }
+
+        internal Car? NextAvailableCar()
+        {
+            foreach (Car car in state.waiting) {
+                if (car.CanCharge()) {
+                    state.waiting.Remove(car);
+                    return car;
+                }
+            }
+            return null;
+        }
     }
     static public class Data
     {

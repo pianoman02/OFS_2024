@@ -198,6 +198,13 @@ namespace OFS
             if (car.timeToDepart) {
                 Program.simulation.PlanEvent(new CarLeaves(car.station, eventTime));
             }
+
+            if (Program.simulation.strategy >= Strategy.FCFS) {
+                Car? next = Program.simulation.NextAvailableCar();
+                if (next != null) {
+                    Program.simulation.PlanEvent(new StartsCharging(car, eventTime));
+                }
+            }
         }
     }
     public class CarLeaves(Station station, double time) : Event(time)
