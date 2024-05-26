@@ -157,7 +157,7 @@ namespace OFS
             state.waiting.Add(car);
         }
 
-        internal Car? NextAvailableCar()
+        private Car? NextAvailableCar()
         {
             foreach (Car car in state.waiting) {
                 if (car.CanCharge()) {
@@ -166,6 +166,16 @@ namespace OFS
                 }
             }
             return null;
+        }
+
+        internal void TryPlanNextCar(double time)
+        {
+            if (strategy >= Strategy.FCFS) {
+                Car? next = NextAvailableCar();
+                if (next != null) {
+                    Program.simulation.PlanEvent(new StartsCharging(next, time));
+                }
+            }
         }
     }
     static public class Data

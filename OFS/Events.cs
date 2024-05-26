@@ -199,12 +199,7 @@ namespace OFS
                 Program.simulation.PlanEvent(new CarLeaves(car.station, eventTime));
             }
 
-            if (Program.simulation.strategy >= Strategy.FCFS) {
-                Car? next = Program.simulation.NextAvailableCar();
-                if (next != null) {
-                    Program.simulation.PlanEvent(new StartsCharging(car, eventTime));
-                }
-            }
+            Program.simulation.TryPlanNextCar(eventTime);
         }
     }
     public class CarLeaves(Station station, double time) : Event(time)
@@ -238,9 +233,15 @@ namespace OFS
 #if SOLAROUTPUT
             Program.simulation.history.solaroutput.Add(output);
 #endif
+            double old = double.MaxValue;
             foreach (int i in Program.simulation.solarStations)
             {
+                old = Program.simulation.state.stations[i].solarPanelOutput;
                 Program.simulation.state.stations[i].SetSolarPanelOutput(output, eventTime);
+            }
+
+            if (old < output) {
+                Program.simulation.TryPlanNextCar(eventTime);
             }
 
             // Enqueue next solar panel change
