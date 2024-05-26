@@ -1,11 +1,16 @@
-﻿using System;
-using System.Collections.Specialized;
-
-namespace OFS {
-	public class Car
+﻿namespace OFS {
+	public class Car(Station station)
 	{
 		public bool fullyCharged = false;
 		public bool timeToDepart = false;
+		public double chargeVolume = RandomDists.SampleContCDF(Data.ChargingVolumeCumulativeProbabilty);
+		public Station station = station;
+		public double prio = 0;
+
+		public bool CanCharge()
+		{
+			throw new NotImplementedException(); //TODO: bepalen of het netwerk voldoende capaciteit heeft om deze auto nu te laten laden
+		}
 	}
 
     public class Cable(int capacity, Cable? upstream = null)
@@ -33,7 +38,6 @@ namespace OFS {
 		public int carCount = 0;
 		public int capacity = capacity;
 		public double solarPanelOutput = 0;
-		public bool hasSolar = false;
 
 		public void ChangeParkingDemand(double powerChange, double time)
 		{
@@ -43,16 +47,8 @@ namespace OFS {
 
 		public void SetSolarPanelOutput(double output, double time)
 		{
-			if (!hasSolar) {
-				throw new Exception("This station does not have solar panels");
-			}
 			ChangeParkingDemand(output - solarPanelOutput, time);
 			solarPanelOutput = output;
-		}
-
-		public void enableSolar()
-		{
-			hasSolar = true;
 		}
 	}
 }
