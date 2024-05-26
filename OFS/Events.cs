@@ -101,7 +101,6 @@ namespace OFS
                 case Strategy.ON_ARRIVAL:
                     return currentTime;
                 case Strategy.PRICE_DRIVEN:
-                    //TODO: price driven starttijd implementeren
                     return PriceDriven(currentTime, departureTime, chargeTime);
                 default:
                     throw new Exception("This function should not be called in this scenario");
@@ -225,8 +224,7 @@ namespace OFS
             }
         }
     }
-    // TODO: Make sure all of the stations change output by the same amount
-    // !!
+
     public class SolarPanelsChange(double time) : Event(time)
     {
         public override void CallEvent()
