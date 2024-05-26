@@ -131,9 +131,9 @@ namespace OFS
             return history;
         }
 
-        public void PlanEvent(Event e, double t)
+        public void PlanEvent(Event e)
         {
-            eventQueue.Enqueue(e, t);
+            eventQueue.Enqueue(e, e.eventTime);
         }
 
         public void EndSimulation()

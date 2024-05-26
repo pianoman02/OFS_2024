@@ -112,8 +112,7 @@ namespace OFS
             // We make a new CarArrives event for the next arriving car
             int hour = ((int)Math.Floor(eventTime)) % 24;
             double nextTime = RandomDists.PoissonSample(Data.ArrivalDistribution,eventTime);
-            Program.simulation.PlanEvent(new CarArrives(nextTime), nextTime);
-
+            Program.simulation.PlanEvent(new CarArrives(nextTime));
             Console.WriteLine(eventTime);
 
             // Now, we try to park the car at most three times
@@ -149,10 +148,10 @@ namespace OFS
                     if (Program.simulation.strategy <= Strategy.PRICE_DRIVEN)
                     {
                         double startTime = OptimalStartTime(eventTime, departureTime, chargeTime);
-                        Program.simulation.PlanEvent(new StartsCharging(car, startTime), startTime);
+                        Program.simulation.PlanEvent(new StartsCharging(car, startTime));
                     } else {
                         if (car.CanCharge()) {
-                            Program.simulation.PlanEvent(new StartsCharging(car, eventTime), eventTime);
+                            Program.simulation.PlanEvent(new StartsCharging(car, eventTime));
                         }
                         else {
                             if (Program.simulation.strategy == Strategy.FCFS) {
@@ -185,7 +184,7 @@ namespace OFS
         {
             // We generate a random amount of charge, and schedule the moment it is detached
             double chargeTime = car.chargeVolume / 6; /// Assuming greedy charging
-            Program.simulation.PlanEvent(new StopsCharging(car, eventTime + chargeTime), eventTime + chargeTime);
+            Program.simulation.PlanEvent(new StopsCharging(car, eventTime + chargeTime));
             car.station.ChangeParkingDemand(6, eventTime);
         }
     }
@@ -197,7 +196,7 @@ namespace OFS
             car.fullyCharged = true;
             car.station.ChangeParkingDemand(-6, eventTime);
             if (car.timeToDepart) {
-                Program.simulation.PlanEvent(new CarLeaves(car.station, eventTime), eventTime);
+                Program.simulation.PlanEvent(new CarLeaves(car.station, eventTime));
             }
         }
     }
@@ -209,7 +208,6 @@ namespace OFS
             station.carCount--;
         }
     }
-
     public class DesiredDeparture(Car car, double time) : Event(time)
     {
         readonly Car car = car;
@@ -217,7 +215,7 @@ namespace OFS
         {
             car.timeToDepart = true;
             if (car.fullyCharged) {
-                Program.simulation.PlanEvent(new CarLeaves(car.station, eventTime), eventTime);
+                Program.simulation.PlanEvent(new CarLeaves(car.station, eventTime));
             }
         }
     }
@@ -239,7 +237,7 @@ namespace OFS
             }
 
             // Enqueue next solar panel change
-            Program.simulation.PlanEvent(new SolarPanelsChange(eventTime + 1), eventTime + 1);
+            Program.simulation.PlanEvent(new SolarPanelsChange(eventTime + 1));
         }
     }
 }
