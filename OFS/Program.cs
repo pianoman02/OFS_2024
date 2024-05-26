@@ -1,15 +1,26 @@
-﻿using System.Globalization;
+﻿//to change value of SOLAROUTPUT -> look in Project,  OFS properties, Build, General, Conditional compilation symbols
+
+using System.Drawing;
+using System.Globalization;
+using System.Xml.Schema;
 using MathNet.Numerics.Distributions;
+
 
 namespace OFS
 {
-    //delegate void Event();
+    public enum Strategy
+    {
+        ON_ARRIVAL,
+        PRICE_DRIVEN,
+        FCFS,
+        ELFS
+    }
     internal class Program
     {
-        public const int ON_ARRIVAL = 0;
-        public const int PRICE_DRIVEN = 1;
-        public const int FCFS = 2;
-        public const int ELFS = 3;
+        //public const int ON_ARRIVAL = 0;
+        //public const int PRICE_DRIVEN = 1;
+        //public const int FCFS = 2;
+        //public const int ELFS = 3;
 
         public static Simulation simulation = new(0, false, []);
 
@@ -37,6 +48,33 @@ namespace OFS
                 output.Add(cumProb);
             }
         }
+        static void ReadTwoColumnFile(string filename, List<double> output1, List<double> output2)
+        {
+            var reader = new StreamReader(@"..\..\..\..\Data\" + filename);
+
+            CultureInfo culture = new CultureInfo("nl");
+            reader.ReadLine(); // discard first line
+            while (!reader.EndOfStream)
+            {
+                var line = reader.ReadLine();
+                var values = line.Split(';');
+                output1.Add(double.Parse(values[1], culture));
+                output2.Add(double.Parse(values[2], culture));
+            }
+
+        }
+        static string filename(Strategy strat, bool summer,int solar)
+        {
+            string name = "";
+            name += strat.ToString();
+            name += "_";
+            name += summer ? "summer" : "winter";
+            name += "_";
+            name += "solar" + solar.ToString();
+            name += ".txt";
+            return name;
+
+        }
         static void Main(string[] args)
         {
             Console.Write("Reading input...");
@@ -45,9 +83,7 @@ namespace OFS
             ReadFile("arrival_hours.csv", Data.ArrivalDistribution);
             ReadCumProb("charging_volume.csv", Data.ChargingVolumeCumulativeProbabilty);
             ReadCumProb("connection_time.csv", Data.ConnectionTimeCumulativeProbabilty);
-            // TODO: Read solar panel data, dependent on summer or winter.
-            for (int i = 0; i < 24; i++)
-                Data.SolarPanelAverages.Add(0.1);
+            ReadTwoColumnFile("solar.csv", Data.SolarPanelAveragesWinter, Data.SolarPanelAveragesSummer);
 
          
             Console.WriteLine("Done");
@@ -55,14 +91,14 @@ namespace OFS
 
             List<int>[] solarOptions = [[], [5, 6], [0, 1, 5, 6]];
 
-            for (int strat = 0; strat <= ELFS; strat++) {
+            for (Strategy strat = Strategy.ON_ARRIVAL; strat <= Strategy.ELFS; strat++) {
                 foreach (bool summer in new List<bool>{true, false}) {
-                    foreach (List<int> solar in solarOptions) {
+                    for(int solar = 0; solar<3; solar++) {
                         Console.WriteLine("Starting simulation");
 
-                        simulation = new Simulation(strat, summer, solar);
+                        simulation = new Simulation(strat, summer, solarOptions[solar]);
                         History result = simulation.RunSimulation();
-                        result.DisplayResults();
+                        result.OutputResults(filename(strat,summer,solar));
                         Console.WriteLine("Simulation finished");
                     }
                 }
@@ -72,22 +108,26 @@ namespace OFS
 
     public class Simulation
     {
-        public int strategy;
+        public Strategy strategy;
         private static PriorityQueue<Event, double> eventQueue = new();
         public State state = new();
-        private History history;
+        public History history;
+        public List<int> solarStations;
         public bool summer;
-        public Simulation(int strategy, bool summer, List<int> solar)
+        public Simulation(Strategy strategy, bool summer, List<int> solarStations)
         {
+            this.solarStations = solarStations;
             this.strategy = strategy;
             this.summer = summer;
             history = new History(state.cables);
             eventQueue.Enqueue(new EndSimulation(100), 100);
             eventQueue.Enqueue(new CarArrives(0), 0);
-            eventQueue.Enqueue(new SolarPanelsChange(state.stations[5], 0), 0);
-            eventQueue.Enqueue(new SolarPanelsChange(state.stations[6], 0), 0);
-            state.stations[5].enableSolar();
-            state.stations[6].enableSolar();
+            foreach (int i in solarStations)
+            {
+                state.stations[i].enableSolar();
+            }
+            if (solarStations.Count > 0)
+                eventQueue.Enqueue(new SolarPanelsChange(0), 0);
         }
 
         public History RunSimulation()
@@ -120,7 +160,8 @@ namespace OFS
         static public List<double> ArrivalDistribution = new List<double>();
         static public List<double> ChargingVolumeCumulativeProbabilty = new List<double>();
         static public List<double> ConnectionTimeCumulativeProbabilty = new List<double>();
-        static public List<double> SolarPanelAverages = new List<double>();
+        static public List<double> SolarPanelAveragesSummer = new List<double>();
+        static public List<double> SolarPanelAveragesWinter = new List<double>();
         static public int[] ParkingCapacities = { 60, 80, 60, 70, 60, 60, 50 }; // zero based, so all the spot move one number
         static public double[] ParkingDistributionCumulative = { 0.15, 0.3, 0.45, 0.65, 0.8, 0.9, 1};
         static public double[] CableCapacities = { 1000, 200, 200, 200, 200, 200, 200, 200, 200, 200 };
@@ -156,6 +197,9 @@ namespace OFS
     public class History(Cable[] cables)
     {
         public Cable[] cables = cables;
+#if SOLAROUTPUT
+        public List<double> solaroutput = new List<double>();
+#endif
         private int CarsRejected = 0;
 
         public void RejectCar()
@@ -163,9 +207,29 @@ namespace OFS
             CarsRejected++;
         }
 
-        public void DisplayResults()
+        public void OutputResults(string filename)
         {
-            //Display results here
+            var writer = new StreamWriter(@"..\..\..\..\Output\" + filename);
+            writer.WriteLine(CarsRejected);
+            foreach (Cable c in cables)
+            {
+                writer.WriteLine(c.changeLoads.Count);
+                for (int i=0; i<c.changeLoads.Count; i++)
+                {
+                    writer.Write(c.changeTimes[i]);
+                    writer.Write(";");
+                    writer.WriteLine(c.changeLoads[i]);                
+                }
+            }
+            writer.Close();
+#if SOLAROUTPUT
+            writer = new StreamWriter(@"..\..\..\..\Output\solar_" + filename);
+            foreach (double d in solaroutput)
+            {
+                writer.WriteLine(d);
+            }
+            writer.Close();
+#endif
         }
     }
 

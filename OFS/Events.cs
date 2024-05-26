@@ -88,7 +88,7 @@ namespace OFS
         readonly Station station = station;
         public override void CallEvent()
         {
-            // todo
+            station.ChangeParkingDemand(-6, eventTime);
         }
     }
     public class CarLeaves(Station station, double time) : Event(time)
@@ -99,18 +99,25 @@ namespace OFS
             station.carCount--;
         }
     }
-    public class SolarPanelsChange(Station station, double time) : Event(time)
+    // TODO: Make sure all of the stations change output by the same amount
+    // !!
+    public class SolarPanelsChange(double time) : Event(time)
     {
-        readonly Station station = station;
         public override void CallEvent()
         {
             // take a random new output of the solar panels
-            double averageoutput = Data.SolarPanelAverages[((int)eventTime)%24];
+            double averageoutput = 200*(Program.simulation.summer ? Data.SolarPanelAveragesSummer[((int)eventTime)%24] : Data.SolarPanelAveragesWinter[((int)eventTime) % 24]);
             double output = Normal.Sample(averageoutput, 0.15 * averageoutput);
-            station.SetSolarPanelOutput(output, eventTime);
+#if SOLAROUTPUT
+            Program.simulation.history.solaroutput.Add(output);
+#endif
+            foreach (int i in Program.simulation.solarStations)
+            {
+                Program.simulation.state.stations[i].SetSolarPanelOutput(output, eventTime);
+            }
 
             // Enqueue next solar panel change
-            Program.simulation.PlanEvent(new SolarPanelsChange(station, eventTime + 1), eventTime + 1);
+            Program.simulation.PlanEvent(new SolarPanelsChange(eventTime + 1), eventTime + 1);
         }
     }
 }
