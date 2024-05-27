@@ -24,6 +24,7 @@
     {
         public Cable? upstream = upstream; //The cable directly upstream from this cable. Null for the cable coming directly out of the transformer.
         public double load = 0; //current load of cable
+		private double realLoad = -1;
 		public int capacity = capacity;
 
         public List<double> changeLoads = [0]; //Different values for loads the cable has had.
@@ -36,6 +37,26 @@
             changeTimes.Add(time);
             upstream?.ChangeCableFlow(powerChange, time);
         }
+
+		public void ChangeVirtualCableFlow(double powerChange)
+		{
+			if (realLoad == -1) {
+				realLoad = load;
+			}
+			load += powerChange;
+			upstream?.ChangeVirtualCableFlow(powerChange);
+		}
+
+		public static void RestoreLoads()
+		{
+			foreach (Cable cable in Program.simulation.state.cables) {
+				if (cable.realLoad != -1) {
+					cable.load = cable.realLoad;
+					cable.realLoad = -1;
+				}
+			}
+		}
+
     }
 
 	public class Station(Cable cable, int capacity)

@@ -158,24 +158,32 @@ namespace OFS
             state.waiting.Add(car);
         }
 
-        private Car? NextAvailableCar()
+        private List<Car> NextAvailableCars()
         {
+            List<Car> cars = [];
             foreach (Car car in state.waiting) {
                 if (car.CanCharge()) {
                     state.waiting.Remove(car);
-                    return car;
+                    cars.Add(car);
+                    car.station.cable.ChangeVirtualCableFlow(Program.CHARGE_SPEED);
                 }
             }
-            return null;
+            return cars;
         }
 
         internal void TryPlanNextCar(double time)
         {
             if (strategy >= Strategy.FCFS) {
-                Car? next = NextAvailableCar();
-                if (next != null) {
-                    Program.simulation.PlanEvent(new StartsCharging(next, time));
+                List<Car> cars = [];
+                foreach (Car car in state.waiting) {
+                    if (car.CanCharge()) {
+                        state.waiting.Remove(car);
+                        cars.Add(car);
+                        car.station.cable.ChangeVirtualCableFlow(Program.CHARGE_SPEED);
+                        Program.simulation.PlanEvent(new StartsCharging(car, time));
+                    }
                 }
+                Cable.RestoreLoads();
             }
         }
     }
