@@ -146,6 +146,7 @@ namespace OFS
 
         internal void Wait(Car car)
         {
+            // This priority queue has O(n) time, it is possible in O(log n) time, but it seems fine for now
             for (int i = 0; i < state.waiting.Count; i++) {
                 if (car.prio < state.waiting[i].prio) {
                     state.waiting.Insert(i, car);
@@ -153,19 +154,6 @@ namespace OFS
                 }
             }
             state.waiting.Add(car);
-        }
-
-        private List<Car> NextAvailableCars()
-        {
-            List<Car> cars = [];
-            foreach (Car car in state.waiting) {
-                if (car.CanCharge()) {
-                    state.waiting.Remove(car);
-                    cars.Add(car);
-                    car.station.cable.ChangeVirtualCableFlow(Program.CHARGE_SPEED);
-                }
-            }
-            return cars;
         }
 
         internal void TryPlanNextCar(double time)
@@ -185,6 +173,7 @@ namespace OFS
                 }
                 Cable.RestoreLoads();
             }
+            // In the case of one of the Price_driven or ON_ARRIVAL, no new car needs to be scheduled
         }
     }
     static public class Data

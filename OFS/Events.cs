@@ -211,6 +211,7 @@ namespace OFS
         {
             station.carCount--;
         }
+        // Add performance measure on how much it is delayed
     }
     public class DesiredDeparture(Car car, double time) : Event(time)
     {
