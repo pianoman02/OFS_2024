@@ -156,6 +156,7 @@ namespace OFS
             state.waiting.Add(car);
         }
 
+        // Onderstaande was even puzzelen, maar het klopt wel!
         internal void TryPlanNextCar(double time)
         {
             if (strategy >= Strategy.FCFS) {
