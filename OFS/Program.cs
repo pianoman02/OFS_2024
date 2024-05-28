@@ -177,11 +177,14 @@ namespace OFS
                 List<Car> cars = [];
                 foreach (Car car in state.waiting) {
                     if (car.CanCharge()) {
-                        state.waiting.Remove(car);
                         cars.Add(car);
                         car.station.cable.ChangeVirtualCableFlow(Program.CHARGE_SPEED);
                         Program.simulation.PlanEvent(new StartsCharging(car, time));
                     }
+                }
+                foreach (Car car in cars)
+                {
+                    state.waiting.Remove(car);
                 }
                 Cable.RestoreLoads();
             }
