@@ -71,9 +71,6 @@ namespace OFS
         }
         static void Main(string[] args)
         {
-            double a = 4.23456445;
-            int b = 2;
-            Console.WriteLine(a / b);
 
             Console.Write("Reading input...");
 
@@ -91,12 +88,12 @@ namespace OFS
             for (Strategy strat = Strategy.ON_ARRIVAL; strat <= Strategy.ELFS; strat++) {
                 foreach (bool summer in new List<bool>{true, false}) {
                     for(int solar = 0; solar<3; solar++) {
-                        Console.WriteLine("Starting simulation");
-
+                        Console.WriteLine("Starting simulation " + filename(strat,summer,solar));
+                        Console.Write("...");
                         simulation = new Simulation(strat, summer, solarOptions[solar]);
                         History result = simulation.RunSimulation();
                         result.OutputResults(filename(strat,summer,solar));
-                        Console.WriteLine("Simulation finished");
+                        Console.WriteLine("     finished");
                     }
                 }
             }

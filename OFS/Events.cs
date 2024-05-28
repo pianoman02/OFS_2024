@@ -112,7 +112,6 @@ namespace OFS
             int hour = ((int)Math.Floor(eventTime)) % 24;
             double nextTime = RandomDists.PoissonSample(Data.ArrivalDistribution,eventTime);
             Program.simulation.PlanEvent(new CarArrives(nextTime));
-            Console.WriteLine(eventTime);
 
             // Now, we try to park the car at most three times
             List<int> triedParkings = new List<int>();
