@@ -101,7 +101,6 @@ namespace OFS
                 case Strategy.ON_ARRIVAL:
                     return currentTime;
                 case Strategy.PRICE_DRIVEN:
-                    //TODO: price driven starttijd implementeren
                     return PriceDriven(currentTime, departureTime, chargeTime);
                 default:
                     throw new Exception("This function should not be called in this scenario");
@@ -113,7 +112,6 @@ namespace OFS
             int hour = ((int)Math.Floor(eventTime)) % 24;
             double nextTime = RandomDists.PoissonSample(Data.ArrivalDistribution,eventTime);
             Program.simulation.PlanEvent(new CarArrives(nextTime));
-            Console.WriteLine(eventTime);
 
             // Now, we try to park the car at most three times
             List<int> triedParkings = new List<int>();
@@ -139,11 +137,10 @@ namespace OFS
 
                     Car car = new(station);
                     // We generate a charge volume and parking time
-                    double chargeTime = car.chargeVolume / 6; /// Assuming charging during just one interval
+                    double chargeTime = car.chargeVolume / Program.CHARGE_SPEED; /// Assuming charging during just one interval
                     double parkingTime = RandomDists.SampleContCDF(Data.ConnectionTimeCumulativeProbabilty);
                     parkingTime = Math.Max(parkingTime, 1.4 * chargeTime); // to make sure it is lengthend if the parking time is too small.
                     double departureTime = eventTime + parkingTime;
-
 
                     if (Program.simulation.strategy <= Strategy.PRICE_DRIVEN)
                     {
@@ -157,12 +154,17 @@ namespace OFS
                             if (Program.simulation.strategy == Strategy.FCFS) {
                                 car.prio = eventTime;
                             } else {
-                                car.prio = departureTime - car.chargeVolume / 6;
+                                car.prio = departureTime - car.chargeVolume / Program.CHARGE_SPEED;
                             }
                             Program.simulation.Wait(car);
                         }
                     }
 
+                    if (Program.simulation.strategy <= Strategy.PRICE_DRIVEN) {
+                        Program.simulation.PlanEvent(new CarLeaves(station, departureTime));
+                    } else {
+                        Program.simulation.PlanEvent(new DesiredDeparture(car, departureTime));
+                    }
                 }
                 // Add to tried parkings if no capacity
                 else
@@ -183,9 +185,9 @@ namespace OFS
         public override void CallEvent()
         {
             // We generate a random amount of charge, and schedule the moment it is detached
-            double chargeTime = car.chargeVolume / 6; /// Assuming greedy charging
+            double chargeTime = car.chargeVolume / Program.CHARGE_SPEED; /// Assuming greedy charging
             Program.simulation.PlanEvent(new StopsCharging(car, eventTime + chargeTime));
-            car.station.ChangeParkingDemand(6, eventTime);
+            car.station.ChangeParkingDemand(Program.CHARGE_SPEED, eventTime);
         }
     }
     public class StopsCharging(Car car, double time) : Event(time)
@@ -194,10 +196,12 @@ namespace OFS
         public override void CallEvent()
         {
             car.fullyCharged = true;
-            car.station.ChangeParkingDemand(-6, eventTime);
+            car.station.ChangeParkingDemand(-Program.CHARGE_SPEED, eventTime);
             if (car.timeToDepart) {
                 Program.simulation.PlanEvent(new CarLeaves(car.station, eventTime));
             }
+
+            Program.simulation.TryPlanNextCar(eventTime);
         }
     }
     public class CarLeaves(Station station, double time) : Event(time)
@@ -207,6 +211,7 @@ namespace OFS
         {
             station.carCount--;
         }
+        // Add performance measure on how much it is delayed
     }
     public class DesiredDeparture(Car car, double time) : Event(time)
     {
@@ -219,8 +224,7 @@ namespace OFS
             }
         }
     }
-    // TODO: Make sure all of the stations change output by the same amount
-    // !!
+
     public class SolarPanelsChange(double time) : Event(time)
     {
         public override void CallEvent()
@@ -231,9 +235,15 @@ namespace OFS
 #if SOLAROUTPUT
             Program.simulation.history.solaroutput.Add(output);
 #endif
+            double old = double.MaxValue;
             foreach (int i in Program.simulation.solarStations)
             {
+                old = Program.simulation.state.stations[i].solarPanelOutput;
                 Program.simulation.state.stations[i].SetSolarPanelOutput(output, eventTime);
+            }
+
+            if (old < output) {
+                Program.simulation.TryPlanNextCar(eventTime);
             }
 
             // Enqueue next solar panel change

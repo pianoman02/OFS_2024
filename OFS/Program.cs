@@ -16,6 +16,7 @@ namespace OFS
     internal class Program
     {
         public static Simulation simulation = new(0, false, []);
+        public const int CHARGE_SPEED = 6;
 
         static void ReadFile(string filename, List<double> storage)
         {
@@ -70,9 +71,6 @@ namespace OFS
         }
         static void Main(string[] args)
         {
-            double a = 4.23456445;
-            int b = 2;
-            Console.WriteLine(a / b);
 
             Console.Write("Reading input...");
 
@@ -90,12 +88,12 @@ namespace OFS
             for (Strategy strat = Strategy.ON_ARRIVAL; strat <= Strategy.ELFS; strat++) {
                 foreach (bool summer in new List<bool>{true, false}) {
                     for(int solar = 0; solar<3; solar++) {
-                        Console.WriteLine("Starting simulation");
-
+                        Console.WriteLine("Starting simulation " + filename(strat,summer,solar));
+                        Console.Write("...");
                         simulation = new Simulation(strat, summer, solarOptions[solar]);
                         History result = simulation.RunSimulation();
                         result.OutputResults(filename(strat,summer,solar));
-                        Console.WriteLine("Simulation finished");
+                        Console.WriteLine("     finished");
                     }
                 }
             }
@@ -148,6 +146,7 @@ namespace OFS
 
         internal void Wait(Car car)
         {
+            // This priority queue has O(n) time, it is possible in O(log n) time, but it seems fine for now
             for (int i = 0; i < state.waiting.Count; i++) {
                 if (car.prio < state.waiting[i].prio) {
                     state.waiting.Insert(i, car);
@@ -155,6 +154,27 @@ namespace OFS
                 }
             }
             state.waiting.Add(car);
+        }
+
+        // Onderstaande was even puzzelen, maar het klopt wel!
+        internal void TryPlanNextCar(double time)
+        {
+            if (strategy >= Strategy.FCFS) {
+                List<Car> cars = [];
+                foreach (Car car in state.waiting) {
+                    if (car.CanCharge()) {
+                        cars.Add(car);
+                        car.station.cable.ChangeVirtualCableFlow(Program.CHARGE_SPEED);
+                        Program.simulation.PlanEvent(new StartsCharging(car, time));
+                    }
+                }
+                foreach (Car car in cars)
+                {
+                    state.waiting.Remove(car);
+                }
+                Cable.RestoreLoads();
+            }
+            // In the case of one of the Price_driven or ON_ARRIVAL, no new car needs to be scheduled
         }
     }
     static public class Data
