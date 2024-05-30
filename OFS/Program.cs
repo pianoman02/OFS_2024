@@ -86,8 +86,12 @@ namespace OFS
             List<int>[] solarOptions = [[], [5, 6], [0, 1, 5, 6]];
 
             for (Strategy strat = Strategy.ON_ARRIVAL; strat <= Strategy.ELFS; strat++) {
-                foreach (bool summer in new List<bool>{true, false}) {
-                    for(int solar = 0; solar<3; solar++) {
+                for(int solar = 0; solar<3; solar++) {
+                    List<bool> seasons = new List<bool>{false};
+                    if (solar > 0) {
+                        seasons.Add(true);
+                    }
+                    foreach (bool summer in seasons) {
                         Console.WriteLine("Starting simulation " + filename(strat,summer,solar));
                         Console.Write("...");
                         simulation = new Simulation(strat, summer, solarOptions[solar]);
@@ -241,7 +245,7 @@ namespace OFS
         {
             var writer = new StreamWriter(@"..\..\..\..\Output\" + filename);
             int carsServed = delays.Count;
-            writer.WriteLine("Percentage not served: " + (CarsRejected/(CarsRejected + carsServed)).ToString());
+            writer.WriteLine("Percentage not served: " + ((double)CarsRejected/(double)(CarsRejected + carsServed)).ToString());
             int carsDelayed = 0;
             double totalDelay = 0;
             foreach (double delay in delays) {
@@ -250,7 +254,7 @@ namespace OFS
                     carsDelayed++;
                 }
             }
-            writer.WriteLine("Percentage delayed: " + (carsDelayed/carsServed).ToString());
+            writer.WriteLine("Percentage delayed: " + ((double)carsDelayed/(double)carsServed).ToString());
             writer.WriteLine("Average delay: " + (totalDelay/carsServed).ToString());
 
             foreach (Cable c in cables)
