@@ -240,7 +240,19 @@ namespace OFS
         public void OutputResults(string filename)
         {
             var writer = new StreamWriter(@"..\..\..\..\Output\" + filename);
-            writer.WriteLine(CarsRejected);
+            int carsServed = delays.Count;
+            writer.WriteLine("Percentage not served: " + (CarsRejected/(CarsRejected + carsServed)).ToString());
+            int carsDelayed = 0;
+            double totalDelay = 0;
+            foreach (double delay in delays) {
+                totalDelay += delay;
+                if (delay > 0) {
+                    carsDelayed++;
+                }
+            }
+            writer.WriteLine("Percentage delayed: " + (carsDelayed/carsServed).ToString());
+            writer.WriteLine("Average delay: " + (totalDelay/carsServed).ToString());
+
             foreach (Cable c in cables)
             {
                 writer.WriteLine(c.changeLoads.Count);
