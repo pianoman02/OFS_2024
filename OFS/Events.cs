@@ -24,6 +24,13 @@ namespace OFS
             // Of misschien laten we het langszaam doodgaan (geen nieuwe autos bijvoorbeeld?)
         }
     }
+    public class StartTrackingData(double time) : Event(time)
+    {
+        public override void CallEvent()
+        {
+            Program.simulation.StartTrackingData();
+        }
+    }
     public class CarArrives(double time) : Event(time)
     {
         private int NextPrice(int interval)
