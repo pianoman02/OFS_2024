@@ -109,7 +109,7 @@ namespace OFS
         public Strategy strategy;
         private static PriorityQueue<Event, double> eventQueue = new();
         public State state = new();
-        public History history;
+        private History history;
         public List<int> solarStations;
         public bool summer;
         public Simulation(Strategy strategy, bool summer, List<int> solarStations)
@@ -143,9 +143,19 @@ namespace OFS
             eventQueue.Clear();
         }
 
-        public void RejectCar()
+        public void LogRejection()
         {
             history.RejectCar();
+        }
+
+        public void LogDelay(double time)
+        {
+            history.LogDelay(time);
+        }
+
+        public void LogSolarOutput(double output)
+        {
+            history.solaroutput.Add(output);
         }
 
         internal void Wait(Car car)
@@ -225,15 +235,15 @@ namespace OFS
     {
         public Cable[] cables = cables;
 #if SOLAROUTPUT
-        public List<double> solaroutput = new List<double>();
+        public List<double> solaroutput = [];
 #endif
-        private int CarsRejected = 0;
+        private int carsRejected = 0;
 
         private List<double> delays = [];
 
         public void RejectCar()
         {
-            CarsRejected++;
+            carsRejected++;
         }
 
         public void LogDelay(double delay)
@@ -245,7 +255,7 @@ namespace OFS
         {
             var writer = new StreamWriter(@"..\..\..\..\Output\" + filename);
             int carsServed = delays.Count;
-            writer.WriteLine("Percentage not served: " + ((double)CarsRejected/(double)(CarsRejected + carsServed)).ToString());
+            writer.WriteLine("Percentage not served: " + ((double)carsRejected/(double)(carsRejected + carsServed)).ToString());
             int carsDelayed = 0;
             double totalDelay = 0;
             foreach (double delay in delays) {
