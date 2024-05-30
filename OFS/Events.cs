@@ -174,7 +174,7 @@ namespace OFS
             }
             if (!emptyparkingfound)
             {
-                Program.simulation.RejectCar();
+                Program.simulation.LogRejection();
             }
         }
     }
@@ -214,7 +214,7 @@ namespace OFS
             if (car.plannedDeparture != null) {
                 delay = eventTime - (double)car.plannedDeparture;
             }
-            Program.simulation.history.LogDelay(delay);
+            Program.simulation.LogDelay(delay);
         }
     }
     public class DesiredDeparture(Car car, double time) : Event(time)
@@ -237,7 +237,7 @@ namespace OFS
             double averageoutput = 200*(Program.simulation.summer ? Data.SolarPanelAveragesSummer[((int)eventTime)%24] : Data.SolarPanelAveragesWinter[((int)eventTime) % 24]);
             double output = Normal.Sample(averageoutput, 0.15 * averageoutput);
 #if SOLAROUTPUT
-            Program.simulation.history.solaroutput.Add(output);
+            Program.simulation.LogSolarOutput(output);
 #endif
             double old = double.MaxValue;
             foreach (int i in Program.simulation.solarStations)
