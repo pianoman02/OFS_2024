@@ -75,7 +75,7 @@
 
 		public void SetSolarPanelOutput(double output, double time)
 		{
-			ChangeParkingDemand(output - solarPanelOutput, time);
+			ChangeParkingDemand(solarPanelOutput - output, time);
 			solarPanelOutput = output;
 		}
 	}
