@@ -206,9 +206,7 @@ namespace OFS
         static public List<double> ConnectionTimeCumulativeProbabilty = new List<double>();
         static public List<double> SolarPanelAveragesSummer = new List<double>();
         static public List<double> SolarPanelAveragesWinter = new List<double>();
-        static public int[] ParkingCapacities = { 60, 80, 60, 70, 60, 60, 50 }; // zero based, so all the spot move one number
         static public double[] ParkingDistributionCumulative = { 0.15, 0.3, 0.45, 0.65, 0.8, 0.9, 1};
-        static public double[] CableCapacities = { 1000, 200, 200, 200, 200, 200, 200, 200, 200, 200 };
     }
     public class State
     {
