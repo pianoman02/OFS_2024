@@ -225,9 +225,16 @@ namespace OFS
 #endif
         private int CarsRejected = 0;
 
+        private List<double> delays = [];
+
         public void RejectCar()
         {
             CarsRejected++;
+        }
+
+        public void LogDelay(double delay)
+        {
+            delays.Add(delay);
         }
 
         public void OutputResults(string filename)

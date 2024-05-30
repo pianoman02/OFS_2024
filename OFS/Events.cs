@@ -161,7 +161,7 @@ namespace OFS
                     }
 
                     if (Program.simulation.strategy <= Strategy.PRICE_DRIVEN) {
-                        Program.simulation.PlanEvent(new CarLeaves(station, departureTime));
+                        Program.simulation.PlanEvent(new CarLeaves(car, departureTime));
                     } else {
                         Program.simulation.PlanEvent(new DesiredDeparture(car, departureTime));
                     }
@@ -197,30 +197,34 @@ namespace OFS
         {
             car.fullyCharged = true;
             car.station.ChangeParkingDemand(-Program.CHARGE_SPEED, eventTime);
-            if (car.timeToDepart) {
-                Program.simulation.PlanEvent(new CarLeaves(car.station, eventTime));
+            if (car.plannedDeparture  != null) {
+                Program.simulation.PlanEvent(new CarLeaves(car, eventTime));
             }
 
             Program.simulation.TryPlanNextCar(eventTime);
         }
     }
-    public class CarLeaves(Station station, double time) : Event(time)
+    public class CarLeaves(Car car, double time) : Event(time)
     {
-        readonly Station station = station;
+        readonly Car car = car;
         public override void CallEvent()
         {
-            station.carCount--;
+            car.station.carCount--;
+            double delay = 0;
+            if (car.plannedDeparture != null) {
+                delay = eventTime - (double)car.plannedDeparture;
+            }
+            Program.simulation.history.LogDelay(delay);
         }
-        // Add performance measure on how much it is delayed
     }
     public class DesiredDeparture(Car car, double time) : Event(time)
     {
         readonly Car car = car;
         public override void CallEvent()
         {
-            car.timeToDepart = true;
+            car.plannedDeparture = eventTime;
             if (car.fullyCharged) {
-                Program.simulation.PlanEvent(new CarLeaves(car.station, eventTime));
+                Program.simulation.PlanEvent(new CarLeaves(car, eventTime));
             }
         }
     }
