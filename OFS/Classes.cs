@@ -2,7 +2,7 @@
 	public class Car(Station station)
 	{
 		public bool fullyCharged = false;
-		public bool timeToDepart = false;
+		public double? plannedDeparture = null;
 		public double chargeVolume = RandomDists.SampleContCDF(Data.ChargingVolumeCumulativeProbabilty);
 		public Station station = station;
 		public double prio = 0;
