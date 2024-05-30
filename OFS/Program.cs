@@ -17,6 +17,8 @@ namespace OFS
     {
         public static Simulation simulation = new(0, false, []);
         public const int CHARGE_SPEED = 6;
+        public const int SIMULATION_TIME = 2424;
+        public const int WARMUP_TIME = 24;
 
         static void ReadFile(string filename, List<double> storage)
         {
@@ -118,9 +120,10 @@ namespace OFS
             this.strategy = strategy;
             this.summer = summer;
             history = new History(state.cables);
-            eventQueue.Enqueue(new EndSimulation(100), 100);
-            eventQueue.Enqueue(new CarArrives(0), 0);
-            eventQueue.Enqueue(new SolarPanelsChange(0), 0);
+            PlanEvent(new EndSimulation(Program.SIMULATION_TIME));
+            PlanEvent(new StartTrackingData(Program.WARMUP_TIME));
+            PlanEvent(new CarArrives(0));
+            PlanEvent(new SolarPanelsChange(0));
         }
 
         public History RunSimulation()
@@ -190,6 +193,11 @@ namespace OFS
             }
             // In the case of one of the Price_driven or ON_ARRIVAL, no new car needs to be scheduled
         }
+
+        internal void StartTrackingData()
+        {
+            history.Reset();
+        }
     }
     static public class Data
     {
@@ -240,6 +248,13 @@ namespace OFS
         private int carsRejected = 0;
 
         private List<double> delays = [];
+
+        public void Reset()
+        {
+            solaroutput = [];
+            carsRejected = 0;
+            delays = [];
+        }
 
         public void RejectCar()
         {
