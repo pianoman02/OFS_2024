@@ -20,6 +20,10 @@ namespace OFS
         public const int SIMULATION_TIME = 2424;
         public const int WARMUP_TIME = 24;
 
+        public static int[] dailyVehicles = new int[(Program.SIMULATION_TIME-Program.WARMUP_TIME)/24*20];
+
+        public static int sim = 0;
+
         static void ReadFile(string filename, List<double> storage)
         {
             var reader = new StreamReader(@"..\..\..\..\Data\" + filename);
@@ -71,6 +75,15 @@ namespace OFS
             return name;
 
         }
+
+        public static void LogArrival(double time)
+        {
+            if (time > WARMUP_TIME) {
+                int day = (int)Math.Floor((time - WARMUP_TIME) / 24) + (Program.SIMULATION_TIME-Program.WARMUP_TIME)/24*sim;
+                dailyVehicles[day] ++;
+            }
+        }
+
         static void Main(string[] args)
         {
 
@@ -100,9 +113,15 @@ namespace OFS
                         History result = simulation.RunSimulation();
                         result.OutputResults(filename(strat,summer,solar));
                         Console.WriteLine("     finished");
+                        sim++;
                     }
                 }
             }
+            double average = dailyVehicles.Average();
+            double sumOfSquaresOfDifferences = dailyVehicles.Select(val => (val - average) * (val - average)).Sum();
+            double sd = Math.Sqrt(sumOfSquaresOfDifferences / dailyVehicles.Length);
+            Console.WriteLine("Vehicles per day: " + average.ToString());
+            Console.WriteLine("stdev: " + sd.ToString());
         }
     }
 

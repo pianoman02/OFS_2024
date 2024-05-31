@@ -115,6 +115,7 @@ namespace OFS
         }
         override public void CallEvent()
         {
+            Program.LogArrival(eventTime);
             // We make a new CarArrives event for the next arriving car
             int hour = ((int)Math.Floor(eventTime)) % 24;
             double nextTime = RandomDists.PoissonSample(Data.ArrivalDistribution,eventTime);
