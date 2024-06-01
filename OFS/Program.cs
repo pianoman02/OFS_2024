@@ -266,7 +266,7 @@ namespace OFS
 
         public void OutputResults(string filename)
         {
-            var writer = new StreamWriter(@"..\..\..\..\Output\" + filename);
+            var writer = new StreamWriter(@"..\..\..\..\Output\readable_" + filename);
             int carsServed = delays.Count;
             writer.WriteLine("Percentage not served: " + ((double)carsRejected/(double)(carsRejected + carsServed)).ToString());
             int carsDelayed = 0;
@@ -303,6 +303,20 @@ namespace OFS
                 }
                 writer.WriteLine("Cable {0} overload percentage: {1}", i+1, overloadTime / (Program.SIMULATION_TIME - Program.WARMUP_TIME));
                 writer.WriteLine("Cable {0} blackout percentage: {1}", i+1, blackoutTime / (Program.SIMULATION_TIME - Program.WARMUP_TIME));
+            }
+            writer.Close();
+            writer = new StreamWriter(@"..\..\..\..\Output\" + filename);
+            // Now some unreadable code for the python script
+            writer.WriteLine(carsRejected);
+            foreach (Cable c in cables)
+            {
+                writer.WriteLine(c.changeLoads.Count);
+                for (int i = 0; i < c.changeLoads.Count; i++)
+                {
+                    writer.Write(c.changeTimes[i]);
+                    writer.Write(";");
+                    writer.WriteLine(c.changeLoads[i]);
+                }
             }
             writer.Close();
 #if SOLAROUTPUT
