@@ -15,12 +15,10 @@ namespace OFS
     }
     internal class Program
     {
-        public static Simulation simulation = new(0, false, []);
+        public static Simulation simulation;
         public const int CHARGE_SPEED = 6;
         public const int SIMULATION_TIME = 2424;
         public const int WARMUP_TIME = 24;
-
-        public static int[] dailyVehicles = new int[(Program.SIMULATION_TIME-Program.WARMUP_TIME)/24*20];
 
         public static int sim = 0;
 
@@ -79,8 +77,8 @@ namespace OFS
         public static void LogArrival(double time)
         {
             if (time > WARMUP_TIME) {
-                int day = (int)Math.Floor((time - WARMUP_TIME) / 24) + (Program.SIMULATION_TIME-Program.WARMUP_TIME)/24*sim;
-                dailyVehicles[day] ++;
+                int day = (int)Math.Floor((time - WARMUP_TIME) / 24);
+                simulation.history.dailyVehicles[day] ++;
             }
         }
 
@@ -101,12 +99,10 @@ namespace OFS
             List<int>[] solarOptions = [[], [5, 6], [0, 1, 5, 6]];
 
             for (Strategy strat = Strategy.ON_ARRIVAL; strat <= Strategy.ELFS; strat++) {
-                for(int solar = 0; solar<3; solar++) {
-                    List<bool> seasons = new List<bool>{false};
-                    if (solar > 0) {
-                        seasons.Add(true);
-                    }
-                    foreach (bool summer in seasons) {
+                foreach (bool summer in new List<bool> { true, false })
+                {
+                    for (int solar = 0; solar < 3; solar++)
+                    {
                         Console.WriteLine("Starting simulation " + filename(strat,summer,solar));
                         Console.Write("...");
                         simulation = new Simulation(strat, summer, solarOptions[solar]);
@@ -117,11 +113,6 @@ namespace OFS
                     }
                 }
             }
-            double average = dailyVehicles.Average();
-            double sumOfSquaresOfDifferences = dailyVehicles.Select(val => (val - average) * (val - average)).Sum();
-            double sd = Math.Sqrt(sumOfSquaresOfDifferences / dailyVehicles.Length);
-            Console.WriteLine("Vehicles per day: " + average.ToString());
-            Console.WriteLine("stdev: " + sd.ToString());
         }
     }
 
@@ -130,7 +121,7 @@ namespace OFS
         public Strategy strategy;
         private static PriorityQueue<Event, double> eventQueue = new();
         public State state = new();
-        private History history;
+        public History history;
         public List<int> solarStations;
         public bool summer;
         public Simulation(Strategy strategy, bool summer, List<int> solarStations)
@@ -258,6 +249,7 @@ namespace OFS
 
     public class History(Cable[] cables)
     {
+        public int[] dailyVehicles = new int[(Program.SIMULATION_TIME - Program.WARMUP_TIME) / 24];
         public Cable[] cables = cables;
 #if SOLAROUTPUT
         public List<double> solaroutput = [];
@@ -298,7 +290,12 @@ namespace OFS
             }
             writer.WriteLine("Percentage delayed: " + ((double)carsDelayed/(double)carsServed).ToString());
             writer.WriteLine("Average delay: " + (totalDelay/carsServed).ToString());
-
+            // dailyvehicles output
+            double average = dailyVehicles.Average();
+            double sumOfSquaresOfDifferences = dailyVehicles.Select(val => (val - average) * (val - average)).Sum();
+            double sd = Math.Sqrt(sumOfSquaresOfDifferences / dailyVehicles.Length);
+            Console.WriteLine("Vehicles per day: " + average.ToString());
+            Console.WriteLine("stdev: " + sd.ToString());
             foreach (int i in new List<int>{0,4})
             {
                 Cable c = cables[i];
