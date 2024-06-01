@@ -337,6 +337,33 @@ namespace OFS
                     writer.WriteLine(c.changeLoads[i]);
                 }
             }
+            writer.WriteLine("Percentage delayed: " + ((double)carsDelayed/(double)carsServed).ToString());
+            writer.WriteLine("Average delay: " + (totalDelay/carsServed).ToString());
+
+            foreach (int i in new List<int>{0,4})
+            {
+                Cable c = cables[i];
+                double blackoutTime = 0;
+                double overloadTime = 0;
+                double lastTimeStamp = 0;
+                bool overload = false;
+                bool blackout = false;
+                for (int j=0; j<c.changeLoads.Count; j++)
+                {
+                    double time = c.changeTimes[j];
+                    if (blackout)
+                    {
+                        blackoutTime += time - lastTimeStamp;
+                    } else if (overload) {
+                        overloadTime += time - lastTimeStamp;
+                    }
+                    overload = c.changeLoads[j] > c.capacity;
+                    blackout = c.changeLoads[j] > c.capacity * 1.1;
+                    lastTimeStamp = time;
+                }
+                writer.WriteLine("Cable {0} overload percentage: {1}", i+1, overloadTime / (Program.SIMULATION_TIME - Program.WARMUP_TIME));
+                writer.WriteLine("Cable {0} blackout percentage: {1}", i+1, blackoutTime / (Program.SIMULATION_TIME - Program.WARMUP_TIME));
+            }
             writer.Close();
 #if SOLAROUTPUT
             writer = new StreamWriter(@"..\..\..\..\Output\solar_" + filename);

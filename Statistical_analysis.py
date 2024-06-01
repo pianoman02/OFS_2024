@@ -1,7 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 
-file = open(r"Output/ON_ARRIVAL_summer_solar1.txt","r")
+file = open(r"Output/FCFS_summer_solar1.txt","r")
 
 cabletimes = []
 cableloads = []
@@ -27,6 +27,6 @@ file.close()
 
 
 plt.figure()
-plt.step(cabletimes[6],cableloads[6],where='post') #this function makes steps
+plt.step(cabletimes[5],cableloads[5],where='post') #this function makes steps
 plt.xlim(0,100)
 plt.show()
