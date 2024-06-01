@@ -1,7 +1,10 @@
 ﻿//to change value of SOLAROUTPUT -> look in Project,  OFS properties, Build, General, Conditional compilation symbols
 
+using System.Drawing;
 using System.Globalization;
+using System.IO;
 using MathNet.Numerics.Distributions;
+using static System.Runtime.InteropServices.JavaScript.JSType;
 
 
 namespace OFS
@@ -19,6 +22,10 @@ namespace OFS
         public const int CHARGE_SPEED = 6;
         public const int SIMULATION_TIME = 2424;
         public const int WARMUP_TIME = 24;
+        const string vehicleheader = "\\begin{tabular}{|l|l|l|l|l|}\r\n\\hline\r\nStrategy     & Scenario        & \\begin{tabular}[c]{@{}l@{}}Percentage of\\\\ vehicles\\\\ with delay\\end{tabular} & Average delay & \\begin{tabular}[c]{@{}l@{}}Percentage of\\\\ vehicles\\\\ not served\\end{tabular} \\\\";
+        const string cableheader = "\\begin{tabular}{|l|l|l|l|l|l|}\r\n\\hline\r\nStrategy     & Scenario        & \\begin{tabular}[c]{@{}l@{}}Cable 1\\\\ overload\\end{tabular} & \\begin{tabular}[c]{@{}l@{}}Cable 1\\\\ blackout\\end{tabular} & \\begin{tabular}[c]{@{}l@{}}Cable 5\\\\ overload\\end{tabular} & \\begin{tabular}[c]{@{}l@{}}Cable 5\\\\ blackout\\end{tabular} \\\\";
+        public const string vehiclepath = @"..\..\..\..\Output\AVehicleTable.txt";
+        public const string cablepath = @"..\..\..\..\Output\ACableTable.txt";
 
 
         static void ReadFile(string filename, List<double> storage)
@@ -80,9 +87,37 @@ namespace OFS
                 simulation.history.dailyVehicles[day] ++;
             }
         }
-
+        static string tablestring(bool summer, int solar)
+        {
+            string sw = summer ? "S" : "W";
+            switch (solar)
+            {
+                case 0:
+                    return "No solar";
+                case 1:
+                    return "Solar 6,7 " + sw;
+                case 2:
+                    return "Solar 1,2,6,7 " + sw;
+                default:
+                    throw new Exception("Only wto solar strategies");
+            }
+        }
+        static string tablestrategy(Strategy strategy)
+        {
+            switch (strategy)
+            {
+                case Strategy.ON_ARRIVAL:
+                    return "Base";
+                case Strategy.PRICE_DRIVEN:
+                    return "Price driven";
+                default:
+                    return strategy.ToString();
+            }
+        }
         static void Main(string[] args)
         {
+            File.WriteAllText(vehiclepath, vehicleheader);
+            File.WriteAllText(cablepath, cableheader);
 
             Console.Write("Reading input...");
 
@@ -108,12 +143,23 @@ namespace OFS
             List<int>[] solarOptions = [[], [5, 6], [0, 1, 5, 6]];
 
             for (Strategy strat = Strategy.ON_ARRIVAL; strat <= Strategy.ELFS; strat++) {
-                foreach (bool summer in new List<bool> { true, false })
+                File.AppendAllText(vehiclepath, "\\hline\r\n" + tablestrategy(strat));
+                File.AppendAllText(cablepath, "\\hline\r\n" + tablestrategy(strat));
+                for (int solar = 0; solar < 3; solar++)
                 {
-                    for (int solar = 0; solar < 3; solar++)
+                    List<bool> seasons = new List<bool> { false };
+                    if (solar > 0)
+                    {
+                        seasons.Add(true);
+                    }
+                    foreach (bool summer in seasons)
                     {
                         Console.WriteLine("Starting simulation " + filename(strat,summer,solar));
                         Console.Write("...");
+                        // latex writing
+                        File.AppendAllText(cablepath, "&" + tablestring(summer,solar));
+                        File.AppendAllText(vehiclepath, "&" + tablestring(summer, solar));
+
                         simulation = new Simulation(strat, summer, solarOptions[solar]);
                         History result = simulation.RunSimulation();
                         result.OutputResults(filename(strat,summer,solar));
@@ -121,6 +167,8 @@ namespace OFS
                     }
                 }
             }
+            File.AppendAllText(vehiclepath, " \\hline \r\n \\end{tabular}");
+            File.AppendAllText(cablepath, " \\hline \r\n \\end{tabular}");
         }
     }
 
@@ -282,12 +330,19 @@ namespace OFS
         {
             delays.Add(delay);
         }
+        string twod(double d)
+        {
+            if (d == 0)
+                return "0";
+            else
+                return d.ToString("F");
+        }
 
         public void OutputResults(string filename)
         {
+
             var writer = new StreamWriter(@"..\..\..\..\Output\readable_" + filename);
             int carsServed = delays.Count;
-            writer.WriteLine("Percentage not served: " + ((double)carsRejected/(double)(carsRejected + carsServed)).ToString());
             int carsDelayed = 0;
             double totalDelay = 0;
             foreach (double delay in delays) {
@@ -296,8 +351,18 @@ namespace OFS
                     carsDelayed++;
                 }
             }
-            writer.WriteLine("Percentage delayed: " + ((double)carsDelayed/(double)carsServed).ToString());
-            writer.WriteLine("Average delay: " + (totalDelay/carsServed).ToString());
+            double percdelay = ((double)carsDelayed / (double)carsServed);
+            double avgdelay = (totalDelay / carsServed);
+            double percnotserved = ((double)carsRejected / (double)(carsRejected + carsServed));
+            writer.WriteLine("Percentage delayed: " + percdelay.ToString());
+            writer.WriteLine("Average delay: " + avgdelay.ToString());
+            writer.WriteLine("Percentage not served: " + percnotserved.ToString());
+            // and now also in latex:
+            File.AppendAllText(Program.vehiclepath, "&" + twod((percdelay * 100)) + "\\%");
+            File.AppendAllText(Program.vehiclepath, "&" + twod(avgdelay) + "h");
+            File.AppendAllText(Program.vehiclepath, "&" + twod((percnotserved * 100)) + "\\%");
+            File.AppendAllText(Program.vehiclepath, "\\\\ \\cline{2-5} \r\n");
+
             // dailyvehicles output
             double average = dailyVehicles.Average();
             double sumOfSquaresOfDifferences = dailyVehicles.Select(val => (val - average) * (val - average)).Sum();
@@ -325,10 +390,17 @@ namespace OFS
                     blackout = c.changeLoads[j] > c.capacity * 1.1;
                     lastTimeStamp = time;
                 }
-                writer.WriteLine("Cable {0} overload percentage: {1}", i+1, overloadTime / (Program.SIMULATION_TIME - Program.WARMUP_TIME));
-                writer.WriteLine("Cable {0} blackout percentage: {1}", i+1, blackoutTime / (Program.SIMULATION_TIME - Program.WARMUP_TIME));
+                double percoverload = overloadTime / (Program.SIMULATION_TIME - Program.WARMUP_TIME);
+                double percblackout = blackoutTime / (Program.SIMULATION_TIME - Program.WARMUP_TIME);
+                writer.WriteLine("Cable {0} overload percentage: {1}", i, percoverload);
+                writer.WriteLine("Cable {0} blackout percentage: {1}", i, percblackout);
+                // latex table
+                File.AppendAllText(Program.cablepath, "&" + twod(percoverload*100)+"\\%");
+                File.AppendAllText(Program.cablepath, "&" + twod(percblackout * 100) + "\\%");
+                // rest
             }
             writer.Close();
+            File.AppendAllText(Program.cablepath, "\\\\ \\cline{2-6} \r\n");
             writer = new StreamWriter(@"..\..\..\..\Output\" + filename);
             // Now some unreadable code for the python script
             writer.WriteLine(carsRejected);
@@ -341,33 +413,6 @@ namespace OFS
                     writer.Write(";");
                     writer.WriteLine(c.changeLoads[i]);
                 }
-            }
-            writer.WriteLine("Percentage delayed: " + ((double)carsDelayed/(double)carsServed).ToString());
-            writer.WriteLine("Average delay: " + (totalDelay/carsServed).ToString());
-
-            foreach (int i in new List<int>{0,4})
-            {
-                Cable c = cables[i];
-                double blackoutTime = 0;
-                double overloadTime = 0;
-                double lastTimeStamp = 0;
-                bool overload = false;
-                bool blackout = false;
-                for (int j=0; j<c.changeLoads.Count; j++)
-                {
-                    double time = c.changeTimes[j];
-                    if (blackout)
-                    {
-                        blackoutTime += time - lastTimeStamp;
-                    } else if (overload) {
-                        overloadTime += time - lastTimeStamp;
-                    }
-                    overload = c.changeLoads[j] > c.capacity;
-                    blackout = c.changeLoads[j] > c.capacity * 1.1;
-                    lastTimeStamp = time;
-                }
-                writer.WriteLine("Cable {0} overload percentage: {1}", i, overloadTime / (Program.SIMULATION_TIME - Program.WARMUP_TIME));
-                writer.WriteLine("Cable {0} blackout percentage: {1}", i, blackoutTime / (Program.SIMULATION_TIME - Program.WARMUP_TIME));
             }
             writer.Close();
 #if SOLAROUTPUT
