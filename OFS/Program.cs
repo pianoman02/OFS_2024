@@ -92,6 +92,16 @@ namespace OFS
             ReadCumProb("connection_time.csv", Data.ConnectionTimeCumulativeProbabilty);
             ReadTwoColumnFile("solar.csv", Data.SolarPanelAveragesWinter, Data.SolarPanelAveragesSummer);
 
+            // Calculate average charging volume:
+            double sum = 0;
+            double previous = 0;
+            for (int i=0; i<Data.ChargingVolumeCumulativeProbabilty.Count; i++)
+            {
+                double cumprob = Data.ChargingVolumeCumulativeProbabilty[i];
+                sum += (i + 0.5) * (cumprob - previous);
+                previous = cumprob;
+            }
+            Console.WriteLine("Average charging volume is" + sum.ToString());
             Console.WriteLine("Done");
             // start and run a priority queue
 
@@ -294,7 +304,7 @@ namespace OFS
             double sd = Math.Sqrt(sumOfSquaresOfDifferences / dailyVehicles.Length);
             Console.WriteLine("Vehicles per day: " + average.ToString());
             Console.WriteLine("stdev: " + sd.ToString());
-            foreach (int i in new List<int>{0,4})
+            foreach (int i in new List<int>{1,5})
             {
                 Cable c = cables[i];
                 double blackoutTime = 0;
@@ -356,8 +366,8 @@ namespace OFS
                     blackout = c.changeLoads[j] > c.capacity * 1.1;
                     lastTimeStamp = time;
                 }
-                writer.WriteLine("Cable {0} overload percentage: {1}", i+1, overloadTime / (Program.SIMULATION_TIME - Program.WARMUP_TIME));
-                writer.WriteLine("Cable {0} blackout percentage: {1}", i+1, blackoutTime / (Program.SIMULATION_TIME - Program.WARMUP_TIME));
+                writer.WriteLine("Cable {0} overload percentage: {1}", i, overloadTime / (Program.SIMULATION_TIME - Program.WARMUP_TIME));
+                writer.WriteLine("Cable {0} blackout percentage: {1}", i, blackoutTime / (Program.SIMULATION_TIME - Program.WARMUP_TIME));
             }
             writer.Close();
 #if SOLAROUTPUT
