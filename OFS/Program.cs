@@ -15,8 +15,11 @@ namespace OFS
     }
     internal class Program
     {
-        public static Simulation simulation = new(0, false, []);
+        public static Simulation simulation;
         public const int CHARGE_SPEED = 6;
+        public const int SIMULATION_TIME = 2424;
+        public const int WARMUP_TIME = 24;
+
 
         static void ReadFile(string filename, List<double> storage)
         {
@@ -69,6 +72,15 @@ namespace OFS
             return name;
 
         }
+
+        public static void LogArrival(double time)
+        {
+            if (time > WARMUP_TIME) {
+                int day = (int)Math.Floor((time - WARMUP_TIME) / 24);
+                simulation.history.dailyVehicles[day] ++;
+            }
+        }
+
         static void Main(string[] args)
         {
 
@@ -86,8 +98,10 @@ namespace OFS
             List<int>[] solarOptions = [[], [5, 6], [0, 1, 5, 6]];
 
             for (Strategy strat = Strategy.ON_ARRIVAL; strat <= Strategy.ELFS; strat++) {
-                foreach (bool summer in new List<bool>{true, false}) {
-                    for(int solar = 0; solar<3; solar++) {
+                foreach (bool summer in new List<bool> { true, false })
+                {
+                    for (int solar = 0; solar < 3; solar++)
+                    {
                         Console.WriteLine("Starting simulation " + filename(strat,summer,solar));
                         Console.Write("...");
                         simulation = new Simulation(strat, summer, solarOptions[solar]);
@@ -114,9 +128,10 @@ namespace OFS
             this.strategy = strategy;
             this.summer = summer;
             history = new History(state.cables);
-            eventQueue.Enqueue(new EndSimulation(100), 100);
-            eventQueue.Enqueue(new CarArrives(0), 0);
-            eventQueue.Enqueue(new SolarPanelsChange(0), 0);
+            PlanEvent(new EndSimulation(Program.SIMULATION_TIME));
+            PlanEvent(new StartTrackingData(Program.WARMUP_TIME));
+            PlanEvent(new CarArrives(0));
+            PlanEvent(new SolarPanelsChange(0));
         }
 
         public History RunSimulation()
@@ -139,9 +154,19 @@ namespace OFS
             eventQueue.Clear();
         }
 
-        public void RejectCar()
+        public void LogRejection()
         {
             history.RejectCar();
+        }
+
+        public void LogDelay(double time)
+        {
+            history.LogDelay(time);
+        }
+
+        public void LogSolarOutput(double output)
+        {
+            history.solaroutput.Add(output);
         }
 
         internal void Wait(Car car)
@@ -176,6 +201,11 @@ namespace OFS
             }
             // In the case of one of the Price_driven or ON_ARRIVAL, no new car needs to be scheduled
         }
+
+        internal void StartTrackingData()
+        {
+            history.Reset();
+        }
     }
     static public class Data
     {
@@ -184,9 +214,7 @@ namespace OFS
         static public List<double> ConnectionTimeCumulativeProbabilty = new List<double>();
         static public List<double> SolarPanelAveragesSummer = new List<double>();
         static public List<double> SolarPanelAveragesWinter = new List<double>();
-        static public int[] ParkingCapacities = { 60, 80, 60, 70, 60, 60, 50 }; // zero based, so all the spot move one number
         static public double[] ParkingDistributionCumulative = { 0.15, 0.3, 0.45, 0.65, 0.8, 0.9, 1};
-        static public double[] CableCapacities = { 1000, 200, 200, 200, 200, 200, 200, 200, 200, 200 };
     }
     public class State
     {
@@ -219,30 +247,117 @@ namespace OFS
 
     public class History(Cable[] cables)
     {
+        public int[] dailyVehicles = new int[(Program.SIMULATION_TIME - Program.WARMUP_TIME) / 24];
         public Cable[] cables = cables;
 #if SOLAROUTPUT
-        public List<double> solaroutput = new List<double>();
+        public List<double> solaroutput = [];
 #endif
-        private int CarsRejected = 0;
+        private int carsRejected = 0;
+
+        private List<double> delays = [];
+
+        public void Reset()
+        {
+            solaroutput = [];
+            carsRejected = 0;
+            delays = [];
+        }
 
         public void RejectCar()
         {
-            CarsRejected++;
+            carsRejected++;
+        }
+
+        public void LogDelay(double delay)
+        {
+            delays.Add(delay);
         }
 
         public void OutputResults(string filename)
         {
-            var writer = new StreamWriter(@"..\..\..\..\Output\" + filename);
-            writer.WriteLine(CarsRejected);
+            var writer = new StreamWriter(@"..\..\..\..\Output\readable_" + filename);
+            int carsServed = delays.Count;
+            writer.WriteLine("Percentage not served: " + ((double)carsRejected/(double)(carsRejected + carsServed)).ToString());
+            int carsDelayed = 0;
+            double totalDelay = 0;
+            foreach (double delay in delays) {
+                totalDelay += delay;
+                if (delay > 0) {
+                    carsDelayed++;
+                }
+            }
+            writer.WriteLine("Percentage delayed: " + ((double)carsDelayed/(double)carsServed).ToString());
+            writer.WriteLine("Average delay: " + (totalDelay/carsServed).ToString());
+            // dailyvehicles output
+            double average = dailyVehicles.Average();
+            double sumOfSquaresOfDifferences = dailyVehicles.Select(val => (val - average) * (val - average)).Sum();
+            double sd = Math.Sqrt(sumOfSquaresOfDifferences / dailyVehicles.Length);
+            Console.WriteLine("Vehicles per day: " + average.ToString());
+            Console.WriteLine("stdev: " + sd.ToString());
+            foreach (int i in new List<int>{0,4})
+            {
+                Cable c = cables[i];
+                double blackoutTime = 0;
+                double overloadTime = 0;
+                double lastTimeStamp = 0;
+                bool overload = false;
+                bool blackout = false;
+                for (int j=0; j<c.changeLoads.Count; j++)
+                {
+                    double time = c.changeTimes[j];
+                    if (blackout)
+                    {
+                        blackoutTime += time - lastTimeStamp;
+                    } else if (overload) {
+                        overloadTime += time - lastTimeStamp;
+                    }
+                    overload = c.changeLoads[j] > c.capacity;
+                    blackout = c.changeLoads[j] > c.capacity * 1.1;
+                    lastTimeStamp = time;
+                }
+                writer.WriteLine("Cable {0} overload percentage: {1}", i+1, overloadTime / (Program.SIMULATION_TIME - Program.WARMUP_TIME));
+                writer.WriteLine("Cable {0} blackout percentage: {1}", i+1, blackoutTime / (Program.SIMULATION_TIME - Program.WARMUP_TIME));
+            }
+            writer.Close();
+            writer = new StreamWriter(@"..\..\..\..\Output\" + filename);
+            // Now some unreadable code for the python script
+            writer.WriteLine(carsRejected);
             foreach (Cable c in cables)
             {
                 writer.WriteLine(c.changeLoads.Count);
-                for (int i=0; i<c.changeLoads.Count; i++)
+                for (int i = 0; i < c.changeLoads.Count; i++)
                 {
                     writer.Write(c.changeTimes[i]);
                     writer.Write(";");
-                    writer.WriteLine(c.changeLoads[i]);                
+                    writer.WriteLine(c.changeLoads[i]);
                 }
+            }
+            writer.WriteLine("Percentage delayed: " + ((double)carsDelayed/(double)carsServed).ToString());
+            writer.WriteLine("Average delay: " + (totalDelay/carsServed).ToString());
+
+            foreach (int i in new List<int>{0,4})
+            {
+                Cable c = cables[i];
+                double blackoutTime = 0;
+                double overloadTime = 0;
+                double lastTimeStamp = 0;
+                bool overload = false;
+                bool blackout = false;
+                for (int j=0; j<c.changeLoads.Count; j++)
+                {
+                    double time = c.changeTimes[j];
+                    if (blackout)
+                    {
+                        blackoutTime += time - lastTimeStamp;
+                    } else if (overload) {
+                        overloadTime += time - lastTimeStamp;
+                    }
+                    overload = c.changeLoads[j] > c.capacity;
+                    blackout = c.changeLoads[j] > c.capacity * 1.1;
+                    lastTimeStamp = time;
+                }
+                writer.WriteLine("Cable {0} overload percentage: {1}", i+1, overloadTime / (Program.SIMULATION_TIME - Program.WARMUP_TIME));
+                writer.WriteLine("Cable {0} blackout percentage: {1}", i+1, blackoutTime / (Program.SIMULATION_TIME - Program.WARMUP_TIME));
             }
             writer.Close();
 #if SOLAROUTPUT

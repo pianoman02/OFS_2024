@@ -1,4 +1,5 @@
 ﻿using MathNet.Numerics.Distributions;
+using System.Data;
 
 namespace OFS
 {
@@ -22,6 +23,13 @@ namespace OFS
             // Ik vraag me af wat we hier gaan doen
             // Moeten we alle data netjes afronden? Of kappen we het af?
             // Of misschien laten we het langszaam doodgaan (geen nieuwe autos bijvoorbeeld?)
+        }
+    }
+    public class StartTrackingData(double time) : Event(time)
+    {
+        public override void CallEvent()
+        {
+            // Program.simulation.StartTrackingData();
         }
     }
     public class CarArrives(double time) : Event(time)
@@ -108,6 +116,7 @@ namespace OFS
         }
         override public void CallEvent()
         {
+            Program.LogArrival(eventTime);
             // We make a new CarArrives event for the next arriving car
             int hour = ((int)Math.Floor(eventTime)) % 24;
             double nextTime = RandomDists.PoissonSample(Data.ArrivalDistribution,eventTime);
@@ -161,7 +170,7 @@ namespace OFS
                     }
 
                     if (Program.simulation.strategy <= Strategy.PRICE_DRIVEN) {
-                        Program.simulation.PlanEvent(new CarLeaves(station, departureTime));
+                        Program.simulation.PlanEvent(new CarLeaves(car, departureTime));
                     } else {
                         Program.simulation.PlanEvent(new DesiredDeparture(car, departureTime));
                     }
@@ -174,7 +183,7 @@ namespace OFS
             }
             if (!emptyparkingfound)
             {
-                Program.simulation.RejectCar();
+                Program.simulation.LogRejection();
             }
         }
     }
@@ -197,30 +206,38 @@ namespace OFS
         {
             car.fullyCharged = true;
             car.station.ChangeParkingDemand(-Program.CHARGE_SPEED, eventTime);
-            if (car.timeToDepart) {
-                Program.simulation.PlanEvent(new CarLeaves(car.station, eventTime));
+            if (car.plannedDeparture  != null) {
+                Program.simulation.PlanEvent(new CarLeaves(car, eventTime));
             }
 
             Program.simulation.TryPlanNextCar(eventTime);
         }
     }
-    public class CarLeaves(Station station, double time) : Event(time)
+    public class CarLeaves(Car car, double time) : Event(time)
     {
-        readonly Station station = station;
+        readonly Car car = car;
         public override void CallEvent()
         {
-            station.carCount--;
+            car.station.carCount--;
+            double delay = 0;
+            if (car.plannedDeparture != null) {
+                delay = eventTime - (double)car.plannedDeparture;
+            }
+            else
+            {
+                // we are in strategy 1 or 2, so the car always departs on time
+            }
+            Program.simulation.LogDelay(delay);
         }
-        // Add performance measure on how much it is delayed
     }
     public class DesiredDeparture(Car car, double time) : Event(time)
     {
         readonly Car car = car;
         public override void CallEvent()
         {
-            car.timeToDepart = true;
+            car.plannedDeparture = eventTime;
             if (car.fullyCharged) {
-                Program.simulation.PlanEvent(new CarLeaves(car.station, eventTime));
+                Program.simulation.PlanEvent(new CarLeaves(car, eventTime));
             }
         }
     }
@@ -233,7 +250,7 @@ namespace OFS
             double averageoutput = 200*(Program.simulation.summer ? Data.SolarPanelAveragesSummer[((int)eventTime)%24] : Data.SolarPanelAveragesWinter[((int)eventTime) % 24]);
             double output = Normal.Sample(averageoutput, 0.15 * averageoutput);
 #if SOLAROUTPUT
-            Program.simulation.history.solaroutput.Add(output);
+            Program.simulation.LogSolarOutput(output);
 #endif
             double old = double.MaxValue;
             foreach (int i in Program.simulation.solarStations)
