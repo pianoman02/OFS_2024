@@ -1,4 +1,5 @@
 ﻿using MathNet.Numerics.Distributions;
+using System.Data;
 
 namespace OFS
 {
@@ -28,7 +29,7 @@ namespace OFS
     {
         public override void CallEvent()
         {
-            Program.simulation.StartTrackingData();
+            // Program.simulation.StartTrackingData();
         }
     }
     public class CarArrives(double time) : Event(time)
@@ -221,6 +222,10 @@ namespace OFS
             double delay = 0;
             if (car.plannedDeparture != null) {
                 delay = eventTime - (double)car.plannedDeparture;
+            }
+            else
+            {
+                // we are in strategy 1 or 2, so the car always departs on time
             }
             Program.simulation.LogDelay(delay);
         }

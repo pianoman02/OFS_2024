@@ -20,7 +20,6 @@ namespace OFS
         public const int SIMULATION_TIME = 2424;
         public const int WARMUP_TIME = 24;
 
-        public static int sim = 0;
 
         static void ReadFile(string filename, List<double> storage)
         {
@@ -109,7 +108,6 @@ namespace OFS
                         History result = simulation.RunSimulation();
                         result.OutputResults(filename(strat,summer,solar));
                         Console.WriteLine("     finished");
-                        sim++;
                     }
                 }
             }
