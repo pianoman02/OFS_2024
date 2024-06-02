@@ -438,13 +438,20 @@ namespace OFS
             }
             writer.Close();
 #if SOLAROUTPUT
-            writer = new StreamWriter(@"..\..\..\..\Output\solar_" + filename);
+            writer = new StreamWriter(@"..\..\..\..\Output\solar\" + filename);
             foreach (double d in solaroutput)
             {
                 writer.WriteLine(d);
             }
             writer.Close();
 #endif
+
+            writer = new StreamWriter(@"..\..\..\..\Output\readable\" + filename);
+            foreach (double d in output.Values)
+            {
+                writer.WriteLine(d);
+            }
+            writer.Close();
             return output;
         }
     }
