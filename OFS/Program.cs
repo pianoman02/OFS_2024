@@ -1,10 +1,7 @@
 ﻿//to change value of SOLAROUTPUT -> look in Project,  OFS properties, Build, General, Conditional compilation symbols
 
-using System.Drawing;
 using System.Globalization;
-using System.IO;
 using MathNet.Numerics.Distributions;
-using static System.Runtime.InteropServices.JavaScript.JSType;
 
 
 namespace OFS
