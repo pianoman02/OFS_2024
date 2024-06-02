@@ -23,8 +23,8 @@ namespace OFS
         const string cableheader = "\\begin{tabular}{|l|l|l|l|l|l|}\r\n\\hline\r\nStrategy     & Scenario        & \\begin{tabular}[c]{@{}l@{}}Cable 1\\\\ overload\\end{tabular} & \\begin{tabular}[c]{@{}l@{}}Cable 1\\\\ blackout\\end{tabular} & \\begin{tabular}[c]{@{}l@{}}Cable 5\\\\ overload\\end{tabular} & \\begin{tabular}[c]{@{}l@{}}Cable 5\\\\ blackout\\end{tabular} \\\\";
         public const string vehiclepath = @"..\..\..\..\Output\AVehicleTable.txt";
         public const string cablepath = @"..\..\..\..\Output\ACableTable.txt";
-
-        public const int RUNS_PER_SCENARIO = 50;
+        public const int RUNS_PER_SCENARIO = 100;
+        public static List<int> carsPerDay = [];
 
         static void ReadFile(string filename, List<double> storage)
         {
@@ -179,8 +179,6 @@ namespace OFS
                                 {"cable1blackout", 0},
                                 {"cable5overload", 0},
                                 {"cable5blackout", 0},
-                                {"vehiclesavg", 0},
-                                {"vehiclessd", 0},
                                 };
 
                         for (int n = 0; n < RUNS_PER_SCENARIO; n++) {
@@ -204,12 +202,15 @@ namespace OFS
                         File.AppendAllText(cablepath, "&" + twod(averageData["cable5blackout"] * 100) + "\\%");
                         File.AppendAllText(cablepath, "\\\\ \\cline{2-6} \r\n");
                         Console.WriteLine("finished!" + new string (' ', RUNS_PER_SCENARIO + 2));
-                        Console.WriteLine("Vehicles per day: {0} ± {1}\n", averageData["vehiclesavg"], averageData["vehiclessd"]);
                     }
                 }
-                File.AppendAllText(vehiclepath, " \\hline \r\n \\end{tabular}");
-                File.AppendAllText(cablepath, " \\hline \r\n \\end{tabular}");
             }
+            File.AppendAllText(vehiclepath, " \\hline \r\n \\end{tabular}");
+            File.AppendAllText(cablepath, " \\hline \r\n \\end{tabular}");
+            double average = carsPerDay.Average();
+            double sumOfSquaresOfDifferences = carsPerDay.Select(val => (val - average) * (val - average)).Sum();
+            double sd = Math.Sqrt(sumOfSquaresOfDifferences / carsPerDay.Count);
+            Console.WriteLine("Vehicles per day: {0} ± {1}\n", average, sd);
         }
     }
 
@@ -392,12 +393,8 @@ namespace OFS
             output["avgdelay"] = avgdelay;
             output["percnotserved"] = percnotserved;
 
-            // dailyvehicles output
-            double average = dailyVehicles.Average();
-            double sumOfSquaresOfDifferences = dailyVehicles.Select(val => (val - average) * (val - average)).Sum();
-            double sd = Math.Sqrt(sumOfSquaresOfDifferences / dailyVehicles.Length);
-            output["vehiclesavg"] = average;
-            output["vehiclessd"] = sd;
+            Program.carsPerDay.AddRange(dailyVehicles);
+
             foreach (int i in new List<int>{1,5})
             {
                 Cable c = cables[i];
