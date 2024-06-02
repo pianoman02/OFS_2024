@@ -29,7 +29,7 @@ namespace OFS
     {
         public override void CallEvent()
         {
-            // Program.simulation.StartTrackingData();
+            Program.simulation.StartTrackingData();
         }
     }
     public class CarArrives(double time) : Event(time)
